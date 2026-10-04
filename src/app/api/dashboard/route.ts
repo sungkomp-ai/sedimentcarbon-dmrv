@@ -94,6 +94,8 @@ export async function GET() {
       standard: f.standard,
       sampleCount: f._count.samples,
       sedimentCount: f._count.sediment,
+      geomGeojson: f.geomGeojson,
+      soilType: f.soilType,
     })),
     creditComparison: comparison,
     creditsByStandard: Array.from(recentByStandard.entries()).map(

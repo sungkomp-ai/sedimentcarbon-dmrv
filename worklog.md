@@ -94,3 +94,33 @@ Stage Summary:
   - Calculator: TH shows "พื้นที่ (ไร่)" default 312.5; EN shows "Project Area (ha)" default 50.
   - Computing credits with 312.5 rai input yields correct results (T-VER net 649.425 tCO₂e) — proving the rai→ha conversion works.
   - Lint clean, page renders 200 OK, dev server stable.
+
+---
+Task ID: 3
+Agent: main
+Task: Add an overview map to the Dashboard showing farm locations + boundaries with OSM/satellite toggle.
+
+Work Log:
+- Extended `/api/dashboard` to include `geomGeojson` and `soilType` for each farm.
+- Created `src/components/sections/dashboard-map.tsx`:
+  - Multi-polygon Leaflet map that renders every farm boundary.
+  - Auto-fit bounds across all farms (or default to Thai NE region if no farms).
+  - Tile toggle button group: "ดาวเทียม" (Esri World Imagery, default) ↔ "ถนน" (OpenStreetMap).
+  - Each polygon colored by its standard accent (T-VER green, VCS teal, GS yellow, ISO purple).
+  - Sticky tooltip per polygon shows farm name + standard + area (locale-aware rai/ha) + sample/sediment counts.
+  - Empty-state hint when no farms registered.
+  - Loaded via `next/dynamic` `ssr: false` to avoid `window is not defined` SSR error.
+- Updated `dashboard-section.tsx`:
+  - Added `MapPin` import + `Badge` import.
+  - Updated `DashboardData.farms` type to include `geomGeojson` + `soilType`.
+  - Inserted a new "ที่ตั้งและขอบเขตแปลง / Farm Locations & Boundaries" Card above the KPI grid.
+
+Stage Summary:
+- Dashboard now leads with a 380px interactive map showing all farm polygons.
+- Tile toggle works verified via Agent Browser:
+  - Default satellite: 12/12 Esri tiles loaded, polygon stroke `#16a34a` (T-VER green).
+  - Toggle to streets: switches to `c.tile.openstreetmap.org` tiles.
+  - Toggle back to satellite: switches to `server.arcgisonline.com` tiles.
+  - Tooltip on polygon hover shows: "แปลงสาธิตทุ่งกะเฉดา · TVER · 312.50 ไร่ · ตัวอย่างดิน: 10 · ตะกอน: 3".
+- Mobile (390×844): map renders at 354×380px, footer correctly pushed down by content.
+- Lint clean, dev server stable, page renders 200 OK.

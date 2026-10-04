@@ -1,6 +1,7 @@
 "use client";
 
 import { useQuery } from "@tanstack/react-query";
+import dynamic from "next/dynamic";
 import { useI18n } from "@/lib/i18n/provider";
 import { useApp } from "@/lib/store/app";
 import { KpiCard } from "./kpi-card";
@@ -8,8 +9,24 @@ import { SectionHeader } from "./section-header";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+
+// Leaflet needs `window`, so we load the map client-only via next/dynamic.
+const DashboardMap = dynamic(
+  () => import("./dashboard-map").then((m) => m.DashboardMap),
+  {
+    ssr: false,
+    loading: () => (
+      <div
+        className="w-full overflow-hidden rounded-md border bg-muted/40 animate-pulse"
+        style={{ height: "380px" }}
+      />
+    ),
+  }
+);
 import {
   MapPinned,
+  MapPin,
   Layers3,
   TestTube2,
   Banknote,
@@ -63,6 +80,8 @@ interface DashboardData {
     standard: string | null;
     sampleCount: number;
     sedimentCount: number;
+    geomGeojson: string;
+    soilType?: string | null;
   }[];
   creditComparison: CreditResult[] | null;
   creditsByStandard: { standard: string; total: number }[];
@@ -128,6 +147,22 @@ export function DashboardSection() {
           </CardContent>
         </Card>
       )}
+
+      {/* Overview map: farm locations + boundaries on OSM / satellite */}
+      <Card className="overflow-hidden">
+        <CardHeader className="pb-2">
+          <CardTitle className="flex items-center gap-2 text-base">
+            <MapPin className="h-4 w-4 text-emerald-600 dark:text-emerald-400" />
+            {locale === "th" ? "ที่ตั้งและขอบเขตแปลง" : "Farm Locations & Boundaries"}
+            <Badge variant="secondary" className="ml-1">
+              {data.farms.length} {locale === "th" ? "แปลง" : "farms"}
+            </Badge>
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="p-0">
+          <DashboardMap farms={data.farms} height="380px" />
+        </CardContent>
+      </Card>
 
       {/* KPIs */}
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
