@@ -43,10 +43,14 @@ interface SeedFarm {
   baselineBd: number;
   currentBd: number;
   coarseFragPct: number;
-  // Sediment traps for this farm
-  sedimentTraps: { trapId: string; areaM2: number; deltaHcm: number }[];
+  // erosionRateTPerHaYr is computed from slope + design (USLE-style).
+  // Sediment traps are computed realistically from area × erosion × design.
+  erosionRateTPerHaYr: number; // baseline (pre-project) erosion
+  trappingEfficiency: number; // 0-1 fraction retained by the design
   // Management activities for the past year
   activities: { date: string; activity: string; nRate: number; note: string }[];
+  // VVB info for verification rounds
+  vvbName: string;
 }
 
 const FARMS: SeedFarm[] = [
@@ -79,17 +83,16 @@ const FARMS: SeedFarm[] = [
     baselineBd: 1.35,
     currentBd: 1.34,
     coarseFragPct: 5,
-    sedimentTraps: [
-      { trapId: "TRAP-01", areaM2: 4.0, deltaHcm: 12.5 },
-      { trapId: "TRAP-02", areaM2: 4.0, deltaHcm: 9.8 },
-      { trapId: "TRAP-03", areaM2: 4.0, deltaHcm: 15.2 },
-    ],
+    // Erosion ~ flat field with minimal slope. Trapping low because no major slope.
+    erosionRateTPerHaYr: 8,
+    trappingEfficiency: 0.45,
     activities: [
       { date: "2024-06-15", activity: "fertiliser", nRate: 60, note: "Urea application 130 kg/ha" },
       { date: "2024-07-10", activity: "tillage", nRate: 0, note: "Light contour tillage" },
       { date: "2024-10-05", activity: "harvest", nRate: 0, note: "Rice harvest, residue retained" },
       { date: "2024-11-20", activity: "trap_maintenance", nRate: 0, note: "Cleaned sediment traps" },
     ],
+    vvbName: "TGO — Thailand Greenhouse Gas Management Organization",
   },
   // ----- Nan farm 1: Tea + terraced plots, Mae Charim -----
   {
@@ -121,18 +124,16 @@ const FARMS: SeedFarm[] = [
     baselineBd: 1.28,
     currentBd: 1.26,
     coarseFragPct: 12,
-    sedimentTraps: [
-      { trapId: "N1-TRAP-01", areaM2: 3.0, deltaHcm: 18.5 },
-      { trapId: "N1-TRAP-02", areaM2: 3.0, deltaHcm: 22.1 },
-      { trapId: "N1-TRAP-03", areaM2: 3.0, deltaHcm: 16.8 },
-      { trapId: "N1-TRAP-04", areaM2: 3.0, deltaHcm: 25.3 },
-    ],
+    // Highland, 28% slope with full sediment-trap design. Baseline erosion ~ 55 t/ha/yr.
+    erosionRateTPerHaYr: 55,
+    trappingEfficiency: 0.75, // terrace + vetiver + check dam + alternating slope = high
     activities: [
       { date: "2024-04-15", activity: "trap_maintenance", nRate: 0, note: "บำรุงคันหญ้าแฝกและทำความสะอาดฝายชะลอน้ำ" },
       { date: "2024-05-20", activity: "cover_crop", nRate: 0, note: "ปลูกปอเทืองเป็นพืชคลุมดินระหว่างแถวชา" },
       { date: "2024-08-10", activity: "harvest", nRate: 0, note: "เก็บใบชารอบ 1 ปี" },
       { date: "2024-11-05", activity: "fertiliser", nRate: 25, note: "ปุ๋ยอินทรีย์ชาอัตรา 50 kg/ha" },
     ],
+    vvbName: "Verra — VCS Program",
   },
   // ----- Nan farm 2: Coffee + vetiver bunds, Pua -----
   {
@@ -164,11 +165,10 @@ const FARMS: SeedFarm[] = [
     baselineBd: 1.18,
     currentBd: 1.17,
     coarseFragPct: 8,
-    sedimentTraps: [
-      { trapId: "N2-TRAP-01", areaM2: 3.5, deltaHcm: 28.4 },
-      { trapId: "N2-TRAP-02", areaM2: 3.5, deltaHcm: 32.1 },
-      { trapId: "N2-TRAP-03", areaM2: 3.5, deltaHcm: 25.7 },
-    ],
+    // Highland, 35% slope with full design. Baseline erosion ~ 75 t/ha/yr.
+    erosionRateTPerHaYr: 75,
+    trappingEfficiency: 0.78,
+    vvbName: "Verra — VCS Program",
     activities: [
       { date: "2024-03-10", activity: "cover_crop", nRate: 0, note: "ปลูกพืชคลุมดินและต้นไม้ให้ร่มเงา (Gliricidia)" },
       { date: "2024-06-15", activity: "trap_maintenance", nRate: 0, note: "ซ่อมแซมคันหญ้าแฝกและฝายชะลอน้ำ" },
@@ -205,13 +205,10 @@ const FARMS: SeedFarm[] = [
     baselineBd: 1.32,
     currentBd: 1.30,
     coarseFragPct: 15,
-    sedimentTraps: [
-      { trapId: "N3-TRAP-01", areaM2: 5.0, deltaHcm: 14.2 },
-      { trapId: "N3-TRAP-02", areaM2: 5.0, deltaHcm: 11.8 },
-      { trapId: "N3-TRAP-03", areaM2: 5.0, deltaHcm: 19.5 },
-      { trapId: "N3-TRAP-04", areaM2: 5.0, deltaHcm: 13.4 },
-      { trapId: "N3-TRAP-05", areaM2: 5.0, deltaHcm: 16.9 },
-    ],
+    // Upland 18% slope with rotation crops. Baseline erosion ~ 35 t/ha/yr.
+    erosionRateTPerHaYr: 35,
+    trappingEfficiency: 0.65,
+    vvbName: "Gold Standard Foundation",
     activities: [
       { date: "2024-05-01", activity: "cover_crop", nRate: 0, note: "ปลูกโสนเป็นปุ๋ยพืชสดก่อนนาปี" },
       { date: "2024-07-15", activity: "harvest", nRate: 0, note: "เก็บเกี่ยข้าวไร่" },
@@ -251,12 +248,10 @@ const FARMS: SeedFarm[] = [
     baselineBd: 1.15,
     currentBd: 1.13,
     coarseFragPct: 10,
-    sedimentTraps: [
-      { trapId: "N4-TRAP-01", areaM2: 4.0, deltaHcm: 35.2 },
-      { trapId: "N4-TRAP-02", areaM2: 4.0, deltaHcm: 38.5 },
-      { trapId: "N4-TRAP-03", areaM2: 4.0, deltaHcm: 29.8 },
-      { trapId: "N4-TRAP-04", areaM2: 4.0, deltaHcm: 41.6 },
-    ],
+    // Highland, 40% slope with full design. Baseline erosion ~ 95 t/ha/yr (very steep).
+    erosionRateTPerHaYr: 95,
+    trappingEfficiency: 0.82,
+    vvbName: "TGO — Thailand Greenhouse Gas Management Organization",
     activities: [
       { date: "2024-02-15", activity: "cover_crop", nRate: 0, note: "ปลูกพืชคลุมดินระหว่างแถวชา-กาแฟ" },
       { date: "2024-04-10", activity: "trap_maintenance", nRate: 0, note: "ซ่อมแซมคันหญ้าแฝกและฝายชะลอน้ำ" },
@@ -281,6 +276,63 @@ function buildPolygonFromBbox(bbox: [number, number, number, number]): string {
       ],
     ],
   });
+}
+
+/**
+ * Compute realistic sediment trap measurements for a farm.
+ *
+ * Each farm has N monitoring plots. We place one sediment trap per plot.
+ * The trap is a small physical structure (3-6 m²) placed at the outlet of
+ * a small sub-plot (catchment ~ 50 m², sized 0.5% of the per-plot catchment).
+ *
+ * Sediment mass captured per trap =
+ *   erosion_rate_t_per_ha_yr × trap_catchment_ha × trapping_efficiency × years × variation
+ *
+ * Sediment volume (m³) = mass_t / bulk_density_t_per_m3
+ * Sediment depth (cm) = volume / trap_physical_area × 100
+ *
+ * Typical depths range from 5 cm (low erosion) to ~40 cm (steep + high erosion),
+ * which matches real sediment-trap field measurements on highland farms.
+ */
+function computeRealisticSedimentTraps(farm: SeedFarm): {
+  trapId: string;
+  areaM2: number;
+  deltaHcm: number;
+}[] {
+  const numPlots = Math.min(farm.baselineSoc.length, 6);
+  const farmAreaM2 = farm.areaHa * 10000;
+  const perPlotCatchmentM2 = farmAreaM2 / numPlots;
+  // Trap physical area: ~0.5% of per-plot catchment, clamped to [3, 6] m²
+  const trapPhysicalM2 = Math.max(3, Math.min(6, perPlotCatchmentM2 * 0.005));
+  // Trap catchment: 50-100 m² (small sub-plot whose runoff drains to this trap)
+  // Larger farms → slightly larger catchment per trap
+  const trapCatchmentHa = (50 + Math.min(50, farm.areaHa * 2)) / 10000;
+  // Years of accumulation (project age ≈ 5 yr)
+  const years = 5;
+  const sedBulkDensity = 1.3;
+  const traps: { trapId: string; areaM2: number; deltaHcm: number }[] = [];
+  for (let i = 0; i < numPlots; i++) {
+    // ±15% per-trap variation for realism
+    const variation = 1 + ((i * 7 + 3) % 30 - 15) / 100;
+    const sedimentMassT =
+      farm.erosionRateTPerHaYr *
+      trapCatchmentHa *
+      farm.trappingEfficiency *
+      years *
+      variation;
+    const sedimentVolumeM3 = sedimentMassT / sedBulkDensity;
+    // Depth in cm, rounded to 1 decimal place, minimum 5 cm
+    const deltaHcm = Math.max(
+      5,
+      Math.round((sedimentVolumeM3 / trapPhysicalM2) * 100 * 10) / 10
+    );
+    traps.push({
+      trapId: `${farm.id.split("-")[0].toUpperCase().slice(0, 2) || "T"}${i + 1}-TRAP-${String(i + 1).padStart(2, "0")}`,
+      areaM2: Math.round(trapPhysicalM2 * 100) / 100,
+      deltaHcm,
+    });
+  }
+  return traps;
 }
 
 async function seedFarm(farm: SeedFarm, user: { id: string }) {
@@ -430,9 +482,10 @@ async function seedFarm(farm: SeedFarm, user: { id: string }) {
     prevHash = recordHashValue;
   }
 
-  // Sediment measurements
+  // Sediment measurements — computed realistically from farm area × erosion × trapping efficiency
   await db.sedimentMeasurement.deleteMany({ where: { farmId: farm.id } });
-  for (const t of farm.sedimentTraps) {
+  const computedTraps = computeRealisticSedimentTraps(farm);
+  for (const t of computedTraps) {
     await db.sedimentMeasurement.create({
       data: {
         farmId: farm.id,
@@ -461,6 +514,82 @@ async function seedFarm(farm: SeedFarm, user: { id: string }) {
       },
     });
   }
+
+  // Verification rounds: 1 validation at project start + 1 verification after 5 years
+  await db.verificationRound.deleteMany({ where: { farmId: farm.id } });
+  // Validation round (round 0)
+  await db.verificationRound.create({
+    data: {
+      farmId: farm.id,
+      roundType: "validation",
+      roundNumber: 0,
+      periodStart: baselineDate,
+      periodEnd: baselineDate,
+      status: "verified",
+      vvbName: farm.vvbName,
+      vvbEmail: "validation@vvb.example",
+      submittedAt: baselineDate,
+      verifiedAt: new Date(baselineDate.getTime() + 90 * 24 * 60 * 60 * 1000),
+      creditsClaimed: 0,
+      creditsVerified: 0,
+      deductionsPct: 0,
+      findings: JSON.stringify([
+        { type: "boundary", severity: "info", note: "ขอบเขตแปลงได้รับการยืนยันด้วย GeoJSON และภาพถ่ายดาวเทียม" },
+        { type: "baseline", severity: "info", note: "ค่าฐาน SOC และ bulk density มาจากการเก็บตัวอย่างจริง" },
+        { type: "additionality", severity: "info", note: "พื้นที่เดิมเป็นไร่เลื่อนลอย → โครงการมี additionality" },
+        { type: "methodology", severity: "info", note: "ใช้ IPCC 2019 Refinement + ESM correction" },
+      ]),
+      statement: `Validation complete. Project design and baseline are consistent with ${farm.standard} requirements. Project is eligible for crediting.`,
+      evidenceHashes: JSON.stringify([]),
+    },
+  });
+  // Verification round 1 (5 years later)
+  const verifyDate = new Date(currentDate.getTime() + 60 * 24 * 60 * 60 * 1000);
+  await db.verificationRound.create({
+    data: {
+      farmId: farm.id,
+      roundType: "verification",
+      roundNumber: 1,
+      periodStart: baselineDate,
+      periodEnd: currentDate,
+      status: "verified",
+      vvbName: farm.vvbName,
+      vvbEmail: "verification@vvb.example",
+      submittedAt: currentDate,
+      verifiedAt: verifyDate,
+      creditsClaimed: 0, // computed in dashboard
+      creditsVerified: 0,
+      deductionsPct: 5, // small deduction for uncertainty
+      findings: JSON.stringify([
+        { type: "soil_samples", severity: "info", note: "ตัวอย่างดินครบถ้วน hash chain ถูกต้อง" },
+        { type: "sediment", severity: "info", note: "ปริมาณตะกอนสอดคล้องกับขนาดแปลงและความลาดชัน" },
+        { type: "uncertainty", severity: "minor", note: `ค่าความไม่แน่นอน ${5}% หักเครดิตตามมาตรฐาน` },
+        { type: "audit", severity: "info", note: "audit trail ผ่านการตรวจสอบย้อนกลับ ระเบียนครบถ้วน" },
+      ]),
+      statement: `Verification round 1 complete. ${farm.standard} requirements met. Net credits verified with 5% uncertainty deduction.`,
+      evidenceHashes: JSON.stringify([]),
+    },
+  });
+  // Verification round 2 (planned, 10 years from start)
+  const nextVerifyStart = new Date(currentDate.getTime() + 365 * 24 * 60 * 60 * 1000);
+  const nextVerifyEnd = new Date(baselineDate.getTime() + 10 * 365 * 24 * 60 * 60 * 1000);
+  await db.verificationRound.create({
+    data: {
+      farmId: farm.id,
+      roundType: "verification",
+      roundNumber: 2,
+      periodStart: nextVerifyStart,
+      periodEnd: nextVerifyEnd,
+      status: "planned",
+      vvbName: farm.vvbName,
+      creditsClaimed: null,
+      creditsVerified: null,
+      deductionsPct: 0,
+      findings: JSON.stringify([]),
+      statement: null,
+      evidenceHashes: JSON.stringify([]),
+    },
+  });
 
   console.log(`  ✓ ${farm.nameEn} (${farm.areaHa} ha, ${farm.elevationM}m)`);
 }

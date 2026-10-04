@@ -10,6 +10,7 @@ export type SectionId =
   | "calculator"
   | "standards"
   | "audit"
+  | "vvb"
   | "guide";
 
 interface AppState {

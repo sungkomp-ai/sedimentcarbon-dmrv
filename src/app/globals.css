@@ -120,3 +120,19 @@
     @apply bg-background text-foreground;
   }
 }
+
+@media print {
+  /* Hide everything except the report modal */
+  body * { visibility: hidden; }
+  /* Show the report modal */
+  .print\:block, .print\:block * { visibility: visible; }
+  .print\:flex, .print\:flex * { visibility: visible; }
+  /* Position report at top of page */
+  .print\:block, .print\:flex { position: absolute; left: 0; top: 0; width: 100%; }
+  /* Ensure good print colors */
+  body { background: white !important; color: black !important; }
+  /* Avoid breaking sections */
+  section { break-inside: avoid; page-break-inside: avoid; }
+  /* Page margins */
+  @page { margin: 1.5cm; }
+}

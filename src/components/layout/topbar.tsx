@@ -16,6 +16,7 @@ const SECTION_LABELS: Record<SectionId, string> = {
   calculator: "nav.calculator",
   standards: "nav.standards",
   audit: "nav.audit",
+  vvb: "nav.vvb",
   guide: "nav.guide",
 };
 

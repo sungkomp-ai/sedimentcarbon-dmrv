@@ -53,6 +53,7 @@ model Farm {
   sediment       SedimentMeasurement[]
   activities    ManagementActivity[]
   calculations   CreditCalculation[]
+  verifications  VerificationRound[]
 
   @@index([ownerId])
   @@index([groupId])
@@ -159,4 +160,32 @@ model CreditCalculation {
 
   @@index([farmId])
   @@index([standard])
+}
+
+model VerificationRound {
+  id              String   @id @default(cuid())
+  farmId          String
+  roundType       String // validation | verification
+  roundNumber     Int // 0 for validation, 1, 2, 3... for verifications
+  periodStart     DateTime
+  periodEnd       DateTime
+  status          String   @default("planned") // planned | in_review | verified | rejected
+  vvbName         String?
+  vvbEmail        String?
+  submittedAt     DateTime?
+  verifiedAt      DateTime?
+  creditsClaimed  Float?
+  creditsVerified Float?
+  deductionsPct   Float?    @default(0)
+  findings        String?   // JSON array of {type, severity, note}
+  statement       String?   // VVB statement text
+  evidenceHashes  String?   // JSON array of record_hash values reviewed
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  farm Farm @relation(fields: [farmId], references: [id])
+
+  @@unique([farmId, roundType, roundNumber])
+  @@index([farmId])
+  @@index([status])
 }

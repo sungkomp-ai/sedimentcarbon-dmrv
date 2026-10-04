@@ -272,3 +272,52 @@ Stage Summary:
 - All 6 verification points pass via VLM vision analysis.
 - Image is now hand-crafted SVG → PNG (66KB) instead of AI-generated (125KB), so the directional arrows are perfectly accurate.
 - The SVG source is also saved at /public/plots/cross-section.svg for future edits.
+
+---
+Task ID: 8
+Agent: main
+Task: (1) Make sediment-trapping amounts realistic per plot area + shape; (2) Add VVB verification menu covering project start + per-cycle verifications; (3) Build a comprehensive verification report.
+
+Work Log:
+- Added VerificationRound Prisma model (roundType validation/verification, roundNumber, status planned/in_review/verified/rejected, vvbName/email, creditsClaimed/Verified, deductionsPct, findings JSON, statement, evidenceHashes).
+- Linked Farm → verifications[] relation.
+- Rewrote sediment trap computation in seed.ts as a physical model:
+  - Per-trap catchment ~50-100 m² (small sub-plot draining into trap, NOT the whole farm).
+  - trap_physical_area = clamp 3-6 m² (≈0.5% of per-plot catchment).
+  - sediment_mass_t = erosion_rate_t_per_ha_yr × trap_catchment_ha × trapping_efficiency × years × ±15% variation.
+  - sediment_volume_m³ = mass / bulk_density (1.3).
+  - deltaHcm = volume / trap_area × 100 (rounded to 1 dp, min 5 cm).
+- Per-farm erosion inputs (USLE-style baseline + design efficiency):
+  - Demo (50 ha, 3.5% slope, flat): 8 t/ha/yr, 0.45 efficiency → 5 cm traps (min, realistic for flat field).
+  - Tea farm (5.2 ha, 28% slope, terrace+vetiver+dam): 55 t/ha/yr, 0.75 → 14-17 cm traps.
+  - Coffee (4 ha, 35% slope, full design): 75 t/ha/yr, 0.78 → 19-24 cm traps.
+  - Rotation crops (7 ha, 18% slope): 35 t/ha/yr, 0.65 → 8-10 cm traps.
+  - Mixed tea+coffee (6.5 ha, 40% slope, full design): 95 t/ha/yr, 0.82 → 27-34 cm traps.
+  - Numbers correlate realistically with slope and design — verified via debug script.
+- Added 3 verification rounds per farm in seed:
+  - R0 (validation): at project start, status verified, with 4 findings (boundary, baseline, additionality, methodology).
+  - R1 (verification): 5 years later, status verified, with 4 findings (soil_samples, sediment, uncertainty, audit) + 5% deduction.
+  - R2 (verification): planned, future date range (showing the per-cycle workflow).
+- Built 3 API routes:
+  - GET/POST /api/vvb/[farmId] — list + create verification rounds, with credit comparison + audit trail + sediment totals.
+  - PATCH/DELETE /api/vvb/[farmId]/[roundId] — update/delete a round.
+  - GET /api/vvb/[farmId]/report — comprehensive report data: project, baseline, current, sediment, activities, credit calc, finance (with dMRV benefit), audit, all verification rounds.
+- Added 50+ new translation keys for VVB section (TH/EN): title, desc, tab labels, round type, status, period, VVB name, credits claimed/verified, deductions, findings, statement, evidence labels, report labels.
+- Added `vvb` to SectionId type, sidebar nav (BadgeCheck icon), topbar label map, and app-shell section switching.
+- Built src/components/sections/vvb-section.tsx (~700 lines):
+  - 3 sub-tabs: Rounds | Evidence | Report.
+  - Rounds tab: card list of validation + verification rounds with status badges, VVB info, findings (with severity-colored badges), VVB statement (border-l-4 emerald), credits claimed/verified.
+  - Evidence tab: audit trail status (valid/broken), sediment totals (volume/mass/C/CO2e), samples + activities counts, credit comparison table (highlighting the farm's standard).
+  - Report tab: button to open full report modal.
+- Built VvbReportDialog modal with comprehensive report body:
+  - 7 sections: Project info | Baseline | Monitoring (sediment + activities) | Credit calculation (table) | Financial (NPV/IRR/Payback/Breakeven) | Audit trail (valid/broken) | Verification rounds.
+  - Print header (only visible when printing) with generation date + farm ID.
+  - Action bar: Print/Download PDF button (uses window.print()) + Close.
+  - Print CSS added to globals.css (hide everything except modal, page margins 1.5cm, break-inside: avoid).
+
+Stage Summary:
+- Sediment trap amounts now scale realistically with farm area, slope, and design efficiency (5-34 cm depending on conditions).
+- VVB section added to nav menu (9 sections now: Dashboard, Farms, Samples, Sediment, Calculator, Standards, Audit, VVB, Guide).
+- VVB section has 3 sub-tabs: Rounds (validation + per-cycle verifications), Evidence (audit trail + sediment + samples + activities + credit calc), Report (full comprehensive modal).
+- Comprehensive report modal supports print-to-PDF via window.print(), with all project data, baseline + current samples, monitoring data, credit calculation table, financial analysis (with dMRV benefit), audit trail status, and all verification rounds with VVB findings + statements.
+- Lint clean, dev server stable, page renders 200 OK, all API endpoints return correct data.

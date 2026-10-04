@@ -8,6 +8,7 @@ import {
   Calculator,
   ShieldCheck,
   FileClock,
+  BadgeCheck,
   BookOpen,
   Leaf,
 } from "lucide-react";
@@ -29,6 +30,7 @@ const NAV: NavItem[] = [
   { id: "calculator", key: "nav.calculator", icon: Calculator },
   { id: "standards", key: "nav.standards", icon: ShieldCheck },
   { id: "audit", key: "nav.audit", icon: FileClock },
+  { id: "vvb", key: "nav.vvb", icon: BadgeCheck },
   { id: "guide", key: "nav.guide", icon: BookOpen },
 ];
 
