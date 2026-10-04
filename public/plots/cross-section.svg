@@ -1,0 +1,200 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1344 768" width="1344" height="768" font-family="'Segoe UI', Tahoma, sans-serif">
+  <!-- Background: muted earth-tone topographic gradient -->
+  <defs>
+    <linearGradient id="bgGrad" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#fef3e2"/>
+      <stop offset="100%" stop-color="#e7d5b1"/>
+    </linearGradient>
+    <linearGradient id="soilGrad" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#a87953"/>
+      <stop offset="100%" stop-color="#6b4423"/>
+    </linearGradient>
+    <linearGradient id="mountainGrad" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#9ca8a3"/>
+      <stop offset="100%" stop-color="#c4b6a0"/>
+    </linearGradient>
+    <marker id="arrowhead" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+      <path d="M 0 0 L 10 5 L 0 10 z" fill="#1d4ed8"/>
+    </marker>
+    <marker id="arrowheadDown" viewBox="0 0 10 10" refX="5" refY="9" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+      <path d="M 0 0 L 5 10 L 10 0 z" fill="#1d4ed8"/>
+    </marker>
+  </defs>
+
+  <!-- Background -->
+  <rect width="1344" height="768" fill="url(#bgGrad)"/>
+
+  <!-- Mountain backdrop (silhouette) -->
+  <path d="M 0 200 L 200 60 L 400 140 L 600 50 L 800 130 L 1000 70 L 1200 150 L 1344 100 L 1344 768 L 0 768 Z"
+        fill="url(#mountainGrad)" opacity="0.35"/>
+
+  <!-- Topographic contour lines (decorative) -->
+  <g stroke="#8b7355" stroke-width="1" fill="none" opacity="0.25">
+    <path d="M 0 220 Q 300 200 600 220 T 1344 220"/>
+    <path d="M 0 320 Q 300 300 600 320 T 1344 320"/>
+    <path d="M 0 420 Q 300 400 600 420 T 1344 420"/>
+    <path d="M 0 520 Q 300 500 600 520 T 1344 520"/>
+    <path d="M 0 620 Q 300 600 600 620 T 1344 620"/>
+  </g>
+
+  <!-- Title -->
+  <text x="672" y="40" text-anchor="middle" font-size="22" font-weight="bold" fill="#1f2937">
+    ภาพตัดขวางของแปลงขั้นบรรได — น้ำไหลซิกแซกสลับซ้าย-ขวา
+  </text>
+  <text x="672" y="62" text-anchor="middle" font-size="13" fill="#6b7280">
+    Cross-section of terraced plots — alternating water flow (zigzag)
+  </text>
+
+  <!-- ====== PLOT 1 (TOP) — flows L → R ====== -->
+  <g id="plot1">
+    <!-- Soil terrace -->
+    <rect x="180" y="120" width="984" height="80" rx="3" fill="url(#soilGrad)" stroke="#4a3018" stroke-width="1.5"/>
+    <!-- Vetiver bund on outer (right) edge -->
+    <rect x="1148" y="105" width="22" height="95" rx="3" fill="#5a3a1f" stroke="#3a2410" stroke-width="1"/>
+    <!-- Vetiver grass clumps (deep green) -->
+    <g fill="#16a34a" stroke="#064e3b" stroke-width="0.8">
+      <path d="M 1153 105 L 1151 130 L 1155 130 Z"/>
+      <path d="M 1158 105 L 1156 132 L 1160 132 Z"/>
+      <path d="M 1163 105 L 1161 130 L 1165 130 Z"/>
+      <path d="M 1168 105 L 1166 132 L 1170 132 Z"/>
+    </g>
+    <!-- Tea/coffee bushes inside -->
+    <g fill="#15803d" stroke="#064e3b" stroke-width="0.5">
+      <ellipse cx="280" cy="175" rx="18" ry="14"/>
+      <ellipse cx="380" cy="180" rx="16" ry="12"/>
+      <ellipse cx="480" cy="175" rx="18" ry="14"/>
+      <ellipse cx="580" cy="180" rx="16" ry="12"/>
+      <ellipse cx="680" cy="175" rx="18" ry="14"/>
+      <ellipse cx="780" cy="180" rx="16" ry="12"/>
+      <ellipse cx="880" cy="175" rx="18" ry="14"/>
+      <ellipse cx="980" cy="180" rx="16" ry="12"/>
+      <ellipse cx="1080" cy="175" rx="18" ry="14"/>
+    </g>
+    <!-- Plot label -->
+    <text x="200" y="115" font-size="14" font-weight="bold" fill="#1f2937">แปลงที่ 1 (PLOT 1)</text>
+    <!-- Water flow arrow L→R -->
+    <line x1="220" y1="155" x2="1130" y2="155" stroke="#1d4ed8" stroke-width="6" marker-end="url(#arrowhead)"/>
+    <text x="672" y="148" text-anchor="middle" font-size="16" font-weight="bold" fill="#1d4ed8">1 →  น้ำไหลซ้าย→ขวา (L→R)</text>
+  </g>
+
+  <!-- Drop arrow from end of plot 1 (right) down to start of plot 2 (right) -->
+  <line x1="1158" y1="205" x2="1158" y2="248" stroke="#1d4ed8" stroke-width="5" marker-end="url(#arrowheadDown)"/>
+  <circle cx="1158" cy="225" r="14" fill="#1d4ed8"/>
+  <text x="1158" y="230" text-anchor="middle" font-size="14" font-weight="bold" fill="white">2</text>
+  <text x="1178" y="228" font-size="11" fill="#1d4ed8" font-weight="600">ตกลงฝั่งขวา</text>
+
+  <!-- ====== PLOT 2 — flows R → L ====== -->
+  <g id="plot2">
+    <rect x="180" y="250" width="984" height="80" rx="3" fill="url(#soilGrad)" stroke="#4a3018" stroke-width="1.5"/>
+    <!-- Vetiver bund on outer (LEFT) edge this time (opposite side for zigzag) -->
+    <rect x="174" y="235" width="22" height="95" rx="3" fill="#5a3a1f" stroke="#3a2410" stroke-width="1"/>
+    <g fill="#16a34a" stroke="#064e3b" stroke-width="0.8">
+      <path d="M 179 235 L 177 260 L 181 260 Z"/>
+      <path d="M 184 235 L 182 262 L 186 262 Z"/>
+      <path d="M 189 235 L 187 260 L 191 260 Z"/>
+      <path d="M 194 235 L 192 262 L 196 262 Z"/>
+    </g>
+    <g fill="#15803d" stroke="#064e3b" stroke-width="0.5">
+      <ellipse cx="280" cy="305" rx="18" ry="14"/>
+      <ellipse cx="380" cy="310" rx="16" ry="12"/>
+      <ellipse cx="480" cy="305" rx="18" ry="14"/>
+      <ellipse cx="580" cy="310" rx="16" ry="12"/>
+      <ellipse cx="680" cy="305" rx="18" ry="14"/>
+      <ellipse cx="780" cy="310" rx="16" ry="12"/>
+      <ellipse cx="880" cy="305" rx="18" ry="14"/>
+      <ellipse cx="980" cy="310" rx="16" ry="12"/>
+      <ellipse cx="1080" cy="305" rx="18" ry="14"/>
+    </g>
+    <text x="1144" y="245" text-anchor="end" font-size="14" font-weight="bold" fill="#1f2937">แปลงที่ 2 (PLOT 2)</text>
+    <!-- Water flow arrow R→L (start from right, end at left) -->
+    <line x1="1130" y1="285" x2="220" y2="285" stroke="#1d4ed8" stroke-width="6" marker-end="url(#arrowhead)"/>
+    <text x="672" y="278" text-anchor="middle" font-size="16" font-weight="bold" fill="#1d4ed8">← 3  น้ำไหลขวา→ซ้าย (R→L)</text>
+  </g>
+
+  <!-- Drop arrow from end of plot 2 (left) down to start of plot 3 (left) -->
+  <line x1="186" y1="335" x2="186" y2="378" stroke="#1d4ed8" stroke-width="5" marker-end="url(#arrowheadDown)"/>
+  <circle cx="186" cy="355" r="14" fill="#1d4ed8"/>
+  <text x="186" y="360" text-anchor="middle" font-size="14" font-weight="bold" fill="white">4</text>
+  <text x="206" y="358" font-size="11" fill="#1d4ed8" font-weight="600">ตกลงฝั่งซ้าย</text>
+
+  <!-- ====== PLOT 3 — flows L → R ====== -->
+  <g id="plot3">
+    <rect x="180" y="380" width="984" height="80" rx="3" fill="url(#soilGrad)" stroke="#4a3018" stroke-width="1.5"/>
+    <rect x="1148" y="365" width="22" height="95" rx="3" fill="#5a3a1f" stroke="#3a2410" stroke-width="1"/>
+    <g fill="#16a34a" stroke="#064e3b" stroke-width="0.8">
+      <path d="M 1153 365 L 1151 390 L 1155 390 Z"/>
+      <path d="M 1158 365 L 1156 392 L 1160 392 Z"/>
+      <path d="M 1163 365 L 1161 390 L 1165 390 Z"/>
+      <path d="M 1168 365 L 1166 392 L 1170 392 Z"/>
+    </g>
+    <g fill="#15803d" stroke="#064e3b" stroke-width="0.5">
+      <ellipse cx="280" cy="435" rx="18" ry="14"/>
+      <ellipse cx="380" cy="440" rx="16" ry="12"/>
+      <ellipse cx="480" cy="435" rx="18" ry="14"/>
+      <ellipse cx="580" cy="440" rx="16" ry="12"/>
+      <ellipse cx="680" cy="435" rx="18" ry="14"/>
+      <ellipse cx="780" cy="440" rx="16" ry="12"/>
+      <ellipse cx="880" cy="435" rx="18" ry="14"/>
+      <ellipse cx="980" cy="440" rx="16" ry="12"/>
+      <ellipse cx="1080" cy="435" rx="18" ry="14"/>
+    </g>
+    <text x="200" y="375" font-size="14" font-weight="bold" fill="#1f2937">แปลงที่ 3 (PLOT 3)</text>
+    <line x1="220" y1="415" x2="1130" y2="415" stroke="#1d4ed8" stroke-width="6" marker-end="url(#arrowhead)"/>
+    <text x="672" y="408" text-anchor="middle" font-size="16" font-weight="bold" fill="#1d4ed8">5 →  น้ำไหลซ้าย→ขวา (L→R)</text>
+  </g>
+
+  <!-- Drop arrow from end of plot 3 (right) down to start of plot 4 (right) -->
+  <line x1="1158" y1="465" x2="1158" y2="508" stroke="#1d4ed8" stroke-width="5" marker-end="url(#arrowheadDown)"/>
+  <circle cx="1158" cy="485" r="14" fill="#1d4ed8"/>
+  <text x="1158" y="490" text-anchor="middle" font-size="14" font-weight="bold" fill="white">6</text>
+  <text x="1178" y="488" font-size="11" fill="#1d4ed8" font-weight="600">ตกลงฝั่งขวา</text>
+
+  <!-- ====== PLOT 4 (BOTTOM) — flows R → L ====== -->
+  <g id="plot4">
+    <rect x="180" y="510" width="984" height="80" rx="3" fill="url(#soilGrad)" stroke="#4a3018" stroke-width="1.5"/>
+    <rect x="174" y="495" width="22" height="95" rx="3" fill="#5a3a1f" stroke="#3a2410" stroke-width="1"/>
+    <g fill="#16a34a" stroke="#064e3b" stroke-width="0.8">
+      <path d="M 179 495 L 177 520 L 181 520 Z"/>
+      <path d="M 184 495 L 182 522 L 186 522 Z"/>
+      <path d="M 189 495 L 187 520 L 191 520 Z"/>
+      <path d="M 194 495 L 192 522 L 196 522 Z"/>
+    </g>
+    <g fill="#15803d" stroke="#064e3b" stroke-width="0.5">
+      <ellipse cx="280" cy="565" rx="18" ry="14"/>
+      <ellipse cx="380" cy="570" rx="16" ry="12"/>
+      <ellipse cx="480" cy="565" rx="18" ry="14"/>
+      <ellipse cx="580" cy="570" rx="16" ry="12"/>
+      <ellipse cx="680" cy="565" rx="18" ry="14"/>
+      <ellipse cx="780" cy="570" rx="16" ry="12"/>
+      <ellipse cx="880" cy="565" rx="18" ry="14"/>
+      <ellipse cx="980" cy="570" rx="16" ry="12"/>
+      <ellipse cx="1080" cy="565" rx="18" ry="14"/>
+    </g>
+    <text x="1144" y="505" text-anchor="end" font-size="14" font-weight="bold" fill="#1f2937">แปลงที่ 4 (PLOT 4)</text>
+    <line x1="1130" y1="545" x2="220" y2="545" stroke="#1d4ed8" stroke-width="6" marker-end="url(#arrowhead)"/>
+    <text x="672" y="538" text-anchor="middle" font-size="16" font-weight="bold" fill="#1d4ed8">← 7  น้ำไหลขวา→ซ้าย (R→L)</text>
+  </g>
+
+  <!-- ====== LEGEND / SUMMARY ====== -->
+  <g id="legend" transform="translate(180, 620)">
+    <rect x="0" y="0" width="984" height="120" rx="8" fill="#ffffff" stroke="#9ca3af" stroke-width="1" opacity="0.95"/>
+
+    <text x="20" y="25" font-size="14" font-weight="bold" fill="#1f2937">
+      สรุปรูปแบบการไหลของน้ำ (Zigzag Water Flow Pattern)
+    </text>
+
+    <g font-size="13" fill="#374151">
+      <text x="20" y="55">• แปลงที่ 1: น้ำไหลซ้าย→ขวา (L→R)</text>
+      <text x="20" y="78">• แปลงที่ 2: น้ำไหลขวา→ซ้าย (R→L) — สลับทิศ</text>
+      <text x="20" y="101">• แปลงที่ 3: น้ำไหลซ้าย→ขวา (L→R) — สลับทิศ</text>
+      <text x="20" y="124" opacity="0">spacer</text>
+    </g>
+
+    <g font-size="13" fill="#374151">
+      <text x="500" y="55">• แปลงที่ 4: น้ำไหลขวา→ซ้าย (R→L) — สลับทิศ</text>
+      <text x="500" y="78" font-weight="bold" fill="#1d4ed8">รูปแบบรวม: L→R, R→L, L→R, R→L (ซิกแซก)</text>
+      <text x="500" y="101">• ขั้นบรรไดดิน 1.5 ม. + คันหญ้าแฝก 0.8 ม. + ฝายชะลอน้ำ</text>
+    </g>
+  </g>
+</svg>

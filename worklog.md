@@ -234,3 +234,41 @@ Stage Summary:
 - Cross-section image now clearly shows the zigzag water flow: top-of-plot → end-of-plot → next-plot-start, alternating left↔right.
 - Both terraced slope and zigzag flow confirmed by VLM vision verification.
 - All captions and the gallery description in TH/EN updated to describe the explicit zigzag pattern.
+
+---
+Task ID: 7
+Agent: main
+Task: Regenerate the cross-section image so each plot shows clearly alternating water flow direction (Plot 1 L→R, Plot 2 R→L, Plot 3 L→R, Plot 4 R→L).
+
+Work Log:
+- First attempt with image-generation AI: model kept rendering all arrows pointing right, didn't alternate directions.
+- Verified via VLM: only (1) and (2) passed; (3), (4), (5), (6) all failed because arrows all pointed right.
+- Second attempt with explicit directional text "L→R" and "R→L" labels above arrows: model still didn't alternate.
+- Switched approach: hand-crafted an SVG diagram (`/public/plots/cross-section.svg`) with:
+  - 4 terraced plots stacked vertically down the slope.
+  - Plot 1 (top): blue arrow #1 going LEFT→RIGHT with label "1 → น้ำไหลซ้าย→ขวา (L→R)".
+  - Drop arrow #2 from right end of plot 1 down to right end of plot 2.
+  - Plot 2: blue arrow #3 going RIGHT→LEFT with label "← 3 น้ำไหลขวา→ซ้าย (R→L)".
+  - Drop arrow #4 from left end of plot 2 down to left end of plot 3.
+  - Plot 3: blue arrow #5 going LEFT→RIGHT.
+  - Drop arrow #6 from right end of plot 3 down to right end of plot 4.
+  - Plot 4 (bottom): blue arrow #7 going RIGHT→LEFT.
+  - Vetiver grass bunds (deep green) on the outer edge of each plot (alternating sides for zigzag).
+  - Tea/coffee bushes inside each plot.
+  - Summary legend at the bottom listing all 4 plot directions + design params.
+- Converted SVG → PNG (1344×768, 66KB) via sharp library at high density (200).
+- Re-verified via VLM:
+  - (1) 4 terraced plots: YES
+  - (2) Plot 1 L→R: YES
+  - (3) Plot 2 R→L (alternating): YES
+  - (4) Plot 3 L→R (alternating): YES
+  - (5) Plot 4 R→L (alternating): YES
+  - (6) Overall zigzag pattern L→R, R→L, L→R, R→L: YES
+- Verified in browser via Agent Browser: new image loads at 1344×768.
+- Lint clean, dev server stable.
+
+Stage Summary:
+- Cross-section now shows the EXACT zigzag water flow the user requested: Plot 1 (L→R) → drop → Plot 2 (R→L) → drop → Plot 3 (L→R) → drop → Plot 4 (R→L).
+- All 6 verification points pass via VLM vision analysis.
+- Image is now hand-crafted SVG → PNG (66KB) instead of AI-generated (125KB), so the directional arrows are perfectly accurate.
+- The SVG source is also saved at /public/plots/cross-section.svg for future edits.
