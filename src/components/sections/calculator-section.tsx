@@ -9,6 +9,8 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Slider } from "@/components/ui/slider";
+import { Switch } from "@/components/ui/switch";
 import { useToast } from "@/hooks/use-toast";
 import {
   Table,
@@ -27,6 +29,9 @@ import {
   TestTube2,
   Network,
   TrendingUp,
+  Sparkles,
+  ArrowUpRight,
+  ArrowDownRight,
 } from "lucide-react";
 import { STANDARD_LIST } from "@/lib/core/standards";
 import type { CreditResult } from "@/lib/core/credits";
@@ -440,78 +445,289 @@ function FinanceTab() {
   const [discount, setDiscount] = useState("8");
   const [cobenefit, setCobenefit] = useState("1200");
   const [area, setArea] = useState(isThai ? "312.5" : "50");
+
+  // dMRV adjustment state
+  const [dmrvEnabled, setDmrvEnabled] = useState(true);
+  const [dmrvReduction, setDmrvReduction] = useState("50"); // % of verifier's on-site time saved
+  const [dmrvPremium, setDmrvPremium] = useState("10"); // % credit price uplift
+
   const [result, setResult] = useState<FinanceResult | null>(null);
+  const [baselineResult, setBaselineResult] = useState<FinanceResult | null>(null);
   const [loading, setLoading] = useState(false);
+
+  // Live-compute the adjusted values for the preview block
+  const baseVerify = Number(verifyCost) || 0;
+  const basePrice = Number(price) || 0;
+  const reductionPct = Number(dmrvReduction) || 0;
+  const premiumPct = Number(dmrvPremium) || 0;
+  const adjVerify = dmrvEnabled ? baseVerify * (1 - reductionPct / 100) : baseVerify;
+  const adjPrice = dmrvEnabled ? basePrice * (1 + premiumPct / 100) : basePrice;
+  const verifySave = baseVerify - adjVerify;
+  const priceAdd = adjPrice - basePrice;
+
+  const verifyCycles = Math.max(1, Math.floor(Number(years) / Math.max(1, Number(verifyEvery))));
+  const totalVerifySave = verifySave * verifyCycles;
+  const totalPremiumRev = priceAdd * Number(annualCredits) * Number(years);
 
   async function compute() {
     setLoading(true);
     try {
-      const body = {
-        areaHa: isThai ? raiToHa(Number(area)) : Number(area),
+      const areaHa = isThai ? raiToHa(Number(area)) : Number(area);
+      const baseBody = {
+        areaHa,
         annualCreditsTco2e: Number(annualCredits),
-        pricePerTco2e: Number(price),
+        pricePerTco2e: basePrice,
         capexPerHa: Number(capex),
         opexPerHaYr: Number(opex),
-        verificationCost: Number(verifyCost),
+        verificationCost: baseVerify,
         verificationEveryYr: Number(verifyEvery),
         years: Number(years),
         discountRate: Number(discount) / 100,
         cobenefitThbHaYr: Number(cobenefit),
       };
-      const res = await fetch("/api/calculate/financial", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(body),
-      });
-      if (!res.ok) throw new Error("Failed");
-      const data = await res.json();
-      setResult(data.result);
+      const adjustedBody = {
+        ...baseBody,
+        pricePerTco2e: adjPrice,
+        verificationCost: adjVerify,
+      };
+      // Run both: baseline (no dMRV) and adjusted (with dMRV)
+      const [baseRes, adjRes] = await Promise.all([
+        fetch("/api/calculate/financial", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(baseBody),
+        }),
+        fetch("/api/calculate/financial", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(adjustedBody),
+        }),
+      ]);
+      if (!baseRes.ok || !adjRes.ok) throw new Error("Failed");
+      const [baseData, adjData] = await Promise.all([baseRes.json(), adjRes.json()]);
+      setBaselineResult(baseData.result);
+      setResult(adjData.result);
     } finally {
       setLoading(false);
     }
   }
 
   return (
-    <div className="grid gap-4 lg:grid-cols-5">
-      <Card className="lg:col-span-2">
-        <CardHeader>
-          <CardTitle className="text-base">{t("calc.fin.cashflow")}</CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-3">
-          <div className="grid grid-cols-2 gap-3">
-            <Field label={isThai ? t("farms.areaRai") : t("calc.credits.area")} value={area} onChange={setArea} />
-            <Field label={`${t("credit.net")}/yr (${t("unit.tco2e")})`} value={annualCredits} onChange={setAnnualCredits} />
-            <Field label={t("calc.fin.price")} value={price} onChange={setPrice} />
-            <Field label={t("calc.fin.capex")} value={capex} onChange={setCapex} />
-            <Field label={t("calc.fin.opex")} value={opex} onChange={setOpex} />
-            <Field label={t("calc.fin.verifyCost")} value={verifyCost} onChange={setVerifyCost} />
-            <Field label={t("calc.fin.verifyEvery")} value={verifyEvery} onChange={setVerifyEvery} />
-            <Field label={t("calc.fin.years")} value={years} onChange={setYears} />
-            <Field label={t("calc.fin.discount")} value={discount} onChange={setDiscount} />
-            <Field label={t("calc.fin.cobenefit")} value={cobenefit} onChange={setCobenefit} />
+    <div className="space-y-4">
+      {/* dMRV adjustment explainer */}
+      <Card className="border-emerald-300 bg-emerald-50/40 dark:bg-emerald-950/20">
+        <CardContent className="flex items-start gap-3 py-3">
+          <Sparkles className="h-5 w-5 text-emerald-600 dark:text-emerald-400 shrink-0 mt-0.5" />
+          <div className="text-sm space-y-1">
+            <p className="font-medium">{t("calc.fin.dmrvDescTitle")}</p>
+            <p className="text-xs text-muted-foreground leading-relaxed">{t("calc.fin.dmrvDesc")}</p>
           </div>
-          <Button onClick={compute} disabled={loading} className="w-full gap-2">
-            <TrendingUp className="h-4 w-4" /> {loading ? t("common.loading") : t("calc.fin.compute")}
-          </Button>
         </CardContent>
       </Card>
 
-      <Card className="lg:col-span-3">
-        <CardHeader>
-          <CardTitle className="text-base">{t("calc.credits.result")}</CardTitle>
-        </CardHeader>
-        <CardContent>
-          {!result ? (
-            <div className="flex h-72 items-center justify-center text-sm text-muted-foreground">
-              {t("common.none")}
+      <div className="grid gap-4 lg:grid-cols-5">
+        <Card className="lg:col-span-2">
+          <CardHeader>
+            <CardTitle className="text-base">{t("calc.fin.cashflow")}</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            <div className="grid grid-cols-2 gap-3">
+              <Field label={isThai ? t("farms.areaRai") : t("calc.credits.area")} value={area} onChange={setArea} />
+              <Field label={`${t("credit.net")}/yr (${t("unit.tco2e")})`} value={annualCredits} onChange={setAnnualCredits} />
+              <Field label={t("calc.fin.price")} value={price} onChange={setPrice} />
+              <Field label={t("calc.fin.capex")} value={capex} onChange={setCapex} />
+              <Field label={t("calc.fin.opex")} value={opex} onChange={setOpex} />
+              <Field label={t("calc.fin.verifyCost")} value={verifyCost} onChange={setVerifyCost} />
+              <Field label={t("calc.fin.verifyEvery")} value={verifyEvery} onChange={setVerifyEvery} />
+              <Field label={t("calc.fin.years")} value={years} onChange={setYears} />
+              <Field label={t("calc.fin.discount")} value={discount} onChange={setDiscount} />
+              <Field label={t("calc.fin.cobenefit")} value={cobenefit} onChange={setCobenefit} />
             </div>
-          ) : (
+            <Button onClick={compute} disabled={loading} className="w-full gap-2">
+              <TrendingUp className="h-4 w-4" /> {loading ? t("common.loading") : t("calc.fin.compute")}
+            </Button>
+          </CardContent>
+        </Card>
+
+        {/* dMRV adjustment panel */}
+        <Card className="lg:col-span-3 border-emerald-200 dark:border-emerald-900">
+          <CardHeader className="pb-3">
+            <div className="flex items-center justify-between">
+              <CardTitle className="flex items-center gap-2 text-base">
+                <Sparkles className="h-4 w-4 text-emerald-600 dark:text-emerald-400" />
+                {t("calc.fin.dmrvTitle")}
+              </CardTitle>
+              <label className="flex items-center gap-2 cursor-pointer">
+                <span className="text-xs text-muted-foreground">{t("calc.fin.dmrvEnable")}</span>
+                <Switch checked={dmrvEnabled} onCheckedChange={setDmrvEnabled} aria-label={t("calc.fin.dmrvEnable")} />
+              </label>
+            </div>
+          </CardHeader>
+          <CardContent className={dmrvEnabled ? "space-y-4" : "space-y-4 opacity-50 pointer-events-none"}>
+            <div className="grid gap-4 sm:grid-cols-2">
+              {/* Reduction slider */}
+              <div className="space-y-2">
+                <div className="flex items-center justify-between">
+                  <Label className="text-xs font-medium">{t("calc.fin.dmrvReduction")}</Label>
+                  <span className="text-sm font-semibold tabular-nums text-emerald-600 dark:text-emerald-400">
+                    {reductionPct}%
+                  </span>
+                </div>
+                <Slider
+                  value={[reductionPct]}
+                  onValueChange={(v) => setDmrvReduction(String(v[0]))}
+                  min={0}
+                  max={90}
+                  step={5}
+                  disabled={!dmrvEnabled}
+                  aria-label={t("calc.fin.dmrvReduction")}
+                />
+                <p className="text-xs text-muted-foreground leading-relaxed">
+                  {t("calc.fin.dmrvReductionHint")}
+                </p>
+              </div>
+
+              {/* Premium slider */}
+              <div className="space-y-2">
+                <div className="flex items-center justify-between">
+                  <Label className="text-xs font-medium">{t("calc.fin.dmrvPremium")}</Label>
+                  <span className="text-sm font-semibold tabular-nums text-violet-600 dark:text-violet-400">
+                    +{premiumPct}%
+                  </span>
+                </div>
+                <Slider
+                  value={[premiumPct]}
+                  onValueChange={(v) => setDmrvPremium(String(v[0]))}
+                  min={0}
+                  max={40}
+                  step={1}
+                  disabled={!dmrvEnabled}
+                  aria-label={t("calc.fin.dmrvPremium")}
+                />
+                <p className="text-xs text-muted-foreground leading-relaxed">
+                  {t("calc.fin.dmrvPremiumHint")}
+                </p>
+              </div>
+            </div>
+
+            {/* Live preview of base → adjusted */}
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+              {/* Verification cost row */}
+              <div className="rounded-md border bg-muted/30 p-3 space-y-1">
+                <div className="text-xs text-muted-foreground">{t("calc.fin.dmrvBaseVerify")}</div>
+                <div className="text-sm font-medium tabular-nums line-through text-muted-foreground">
+                  {fmt(baseVerify)} {t("unit.thb")}
+                </div>
+                <div className="text-xs text-muted-foreground">{t("calc.fin.dmrvAdjVerify")}</div>
+                <div className="text-lg font-semibold tabular-nums text-emerald-600 dark:text-emerald-400">
+                  {fmt(adjVerify)} {t("unit.thb")}
+                </div>
+                <div className="text-xs text-emerald-600 dark:text-emerald-400">
+                  {t("calc.fin.dmrvSave")}: {fmt(verifySave)} {t("unit.thb")}
+                </div>
+              </div>
+
+              {/* Carbon price row */}
+              <div className="rounded-md border bg-muted/30 p-3 space-y-1">
+                <div className="text-xs text-muted-foreground">{t("calc.fin.dmrvBasePrice")}</div>
+                <div className="text-sm font-medium tabular-nums line-through text-muted-foreground">
+                  {fmt(basePrice)} {t("unit.thb")}
+                </div>
+                <div className="text-xs text-muted-foreground">{t("calc.fin.dmrvAdjPrice")}</div>
+                <div className="text-lg font-semibold tabular-nums text-violet-600 dark:text-violet-400">
+                  {fmt(adjPrice)} {t("unit.thb")}
+                </div>
+                <div className="text-xs text-violet-600 dark:text-violet-400">
+                  {t("calc.fin.dmrvAdd")}: {fmt(priceAdd)} {t("unit.thb")}
+                </div>
+              </div>
+            </div>
+
+            {/* Cumulative benefit preview */}
+            <div className="rounded-md border bg-gradient-to-br from-emerald-50 to-violet-50 dark:from-emerald-950/30 dark:to-violet-950/30 p-3">
+              <div className="flex items-center gap-2 mb-2">
+                <Sparkles className="h-3.5 w-3.5 text-emerald-600 dark:text-emerald-400" />
+                <span className="text-xs font-medium">{t("calc.fin.dmrvBenefit")}</span>
+              </div>
+              <div className="grid grid-cols-2 gap-2 text-xs">
+                <div>
+                  <div className="text-muted-foreground">{t("calc.fin.dmrvSaveTotal")}</div>
+                  <div className="font-semibold tabular-nums text-emerald-600 dark:text-emerald-400">
+                    {fmt(totalVerifySave)} {t("unit.thb")}
+                  </div>
+                  <div className="text-[10px] text-muted-foreground">{verifyCycles} cycles × {fmt(verifySave)}</div>
+                </div>
+                <div>
+                  <div className="text-muted-foreground">{t("calc.fin.dmrvPremiumRevenueTotal")}</div>
+                  <div className="font-semibold tabular-nums text-violet-600 dark:text-violet-400">
+                    {fmt(totalPremiumRev)} {t("unit.thb")}
+                  </div>
+                  <div className="text-[10px] text-muted-foreground">
+                    {fmt(Number(annualCredits))} {t("unit.tco2e")}/yr × {years}{t("unit.yr")}
+                  </div>
+                </div>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Result panel: comparison baseline vs adjusted */}
+      {result && (
+        <Card>
+          <CardHeader className="pb-3">
+            <CardTitle className="flex items-center gap-2 text-base">
+              <TrendingUp className="h-4 w-4 text-emerald-600 dark:text-emerald-400" />
+              {t("calc.credits.result")}
+              {dmrvEnabled && baselineResult && (
+                <Badge variant="outline" className="text-emerald-700 dark:text-emerald-300 border-emerald-300 dark:border-emerald-700">
+                  {t("calc.fin.dmrvBenefit")}
+                </Badge>
+              )}
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
             <div className="space-y-4">
+              {/* Metrics with before/after deltas */}
               <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-                <Metric label={t("calc.fin.npv")} value={result.npvThb} fmt={fmt} suffix="THB" tone="violet" />
-                <Metric label={t("calc.fin.irr")} value={result.irrPct} fmt={fmt} suffix="%" tone="emerald" />
-                <Metric label={t("calc.fin.payback")} value={result.paybackYear} fmt={fmt} suffix={t("unit.yr")} tone="amber" />
-                <Metric label={t("calc.fin.breakeven")} value={result.breakevenPriceThbPerTco2e} fmt={fmt} suffix="THB/tCO₂e" tone="sky" />
+                <MetricCompare
+                  label={t("calc.fin.npv")}
+                  baseline={baselineResult?.npvThb}
+                  adjusted={result.npvThb}
+                  fmt={fmt}
+                  suffix="THB"
+                  tone="violet"
+                  dmrvOn={dmrvEnabled}
+                />
+                <MetricCompare
+                  label={t("calc.fin.irr")}
+                  baseline={baselineResult?.irrPct}
+                  adjusted={result.irrPct}
+                  fmt={fmt}
+                  suffix="%"
+                  tone="emerald"
+                  dmrvOn={dmrvEnabled}
+                />
+                <MetricCompare
+                  label={t("calc.fin.payback")}
+                  baseline={baselineResult?.paybackYear}
+                  adjusted={result.paybackYear}
+                  fmt={fmt}
+                  suffix={t("unit.yr")}
+                  tone="amber"
+                  dmrvOn={dmrvEnabled}
+                  lowerIsBetter
+                />
+                <MetricCompare
+                  label={t("calc.fin.breakeven")}
+                  baseline={baselineResult?.breakevenPriceThbPerTco2e}
+                  adjusted={result.breakevenPriceThbPerTco2e}
+                  fmt={fmt}
+                  suffix="THB/tCO₂e"
+                  tone="sky"
+                  dmrvOn={dmrvEnabled}
+                  lowerIsBetter
+                />
               </div>
 
               <div className="grid grid-cols-2 gap-3 text-sm">
@@ -548,9 +764,9 @@ function FinanceTab() {
                 </div>
               </div>
             </div>
-          )}
-        </CardContent>
-      </Card>
+          </CardContent>
+        </Card>
+      )}
     </div>
   );
 }
@@ -746,6 +962,82 @@ function Metric({ label, value, fmt, suffix, tone }: { label: string; value: num
         {value === null ? "—" : fmt(value)}
       </div>
       <div className="text-xs text-muted-foreground">{suffix}</div>
+    </div>
+  );
+}
+
+/**
+ * Like Metric, but shows before/after delta when dMRV is on. If dMRV is off
+ * (dmrvOn=false), behaves like a single-value Metric (no delta shown).
+ */
+function MetricCompare({
+  label,
+  baseline,
+  adjusted,
+  fmt,
+  suffix,
+  tone,
+  dmrvOn,
+  lowerIsBetter = false,
+}: {
+  label: string;
+  baseline: number | null | undefined;
+  adjusted: number | null;
+  fmt: (n: number, opts?: Intl.NumberFormatOptions) => string;
+  suffix: string;
+  tone: "violet" | "emerald" | "amber" | "sky";
+  dmrvOn: boolean;
+  lowerIsBetter?: boolean;
+}) {
+  const tones: Record<string, string> = {
+    violet: "bg-violet-50/60 dark:bg-violet-950/20",
+    emerald: "bg-emerald-50/60 dark:bg-emerald-950/20",
+    amber: "bg-amber-50/60 dark:bg-amber-950/20",
+    sky: "bg-sky-50/60 dark:bg-sky-950/20",
+  };
+
+  // Compute delta
+  const hasBoth = dmrvOn && baseline != null && adjusted != null;
+  const delta = hasBoth ? (adjusted as number) - (baseline as number) : 0;
+  // "Improved" means delta is in the good direction (lower is better => negative delta good)
+  const isImproved = hasBoth && (lowerIsBetter ? delta < 0 : delta > 0);
+  const isFlat = hasBoth && delta === 0;
+  const deltaLabel =
+    delta > 0 ? `+${fmt(delta)}` : `${fmt(delta)}`;
+
+  return (
+    <div className={`rounded-md p-3 ${tones[tone]}`}>
+      <div className="text-xs text-muted-foreground">{label}</div>
+      <div className="text-xl font-semibold tabular-nums">
+        {adjusted === null ? "—" : fmt(adjusted)}
+      </div>
+      <div className="flex items-center gap-1 text-xs">
+        {hasBoth ? (
+          <>
+            <span className="text-muted-foreground">
+              {fmt(baseline as number)} →
+            </span>
+            <span
+              className={
+                isImproved
+                  ? "text-emerald-600 dark:text-emerald-400 font-medium"
+                  : isFlat
+                  ? "text-muted-foreground"
+                  : "text-red-600 dark:text-red-400 font-medium"
+              }
+            >
+              {isImproved ? <ArrowUpRight className="inline h-3 w-3" /> : null}
+              {isImproved || !isFlat ? (
+                <ArrowDownRight className={isImproved ? "hidden" : "inline h-3 w-3"} />
+              ) : null}
+              {" "}
+              {deltaLabel}
+            </span>
+          </>
+        ) : (
+          <span className="text-muted-foreground">{suffix}</span>
+        )}
+      </div>
     </div>
   );
 }

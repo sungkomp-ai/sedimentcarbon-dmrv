@@ -124,3 +124,39 @@ Stage Summary:
   - Tooltip on polygon hover shows: "แปลงสาธิตทุ่งกะเฉดา · TVER · 312.50 ไร่ · ตัวอย่างดิน: 10 · ตะกอน: 3".
 - Mobile (390×844): map renders at 354×380px, footer correctly pushed down by content.
 - Lint clean, dev server stable, page renders 200 OK.
+
+---
+Task ID: 4
+Agent: main
+Task: Add dMRV adjustment panel in the Finance tab to let users model how the dMRV system lowers verification cost and lifts carbon credit value.
+
+Work Log:
+- Added 17 new bilingual translation keys (calc.fin.dmrv* — title, enable toggle, reduction/premium labels, hints, base/adjusted preview, cumulative savings, premium revenue, benefit summary, full descriptive text).
+- Refactored FinanceTab in calculator-section.tsx:
+  - Added dMRV explainer card at the top with full Thai/English description of why dMRV lowers verification cost and lifts credit value (per the user's prompt).
+  - Added a "ปรับค่าตรวจประเมินด้วย dMRV" panel with:
+    - Switch toggle to enable/disable dMRV adjustment (default ON).
+    - "ลดขั้นตอนตรวจสอบภาคสนาม (%)" slider 0-90% (default 50%).
+    - "เพิ่มมูลค่าเครดิตจากความน่าเชื่อถือ (%)" slider 0-40% (default +10%).
+    - Live preview of "ค่าตรวจประเมินพื้นฐาน → ค่าตรวจประเมินที่ปรับแล้ว" with strikethrough on base value and emerald accent on adjusted.
+    - Live preview of "ราคาเครดิตพื้นฐาน → ราคาเครดิตที่ปรับแล้ว" with violet accent on adjusted.
+    - Cumulative dMRV benefit box (gradient emerald→violet) showing total savings and total premium revenue over the project.
+    - Panel auto-dims (opacity-50 + pointer-events-none) when switch is off.
+  - Modified the compute flow to run BOTH baseline (no dMRV) and adjusted (with dMRV) financial analyses in parallel via Promise.all.
+- Added a MetricCompare helper component that shows the adjusted value + the baseline→delta when dMRV is on (e.g. "NPV -80,722 → +174,190 (+254,912)") and falls back to a plain Metric when off.
+- Lower-is-better flag for Payback and Breakeven so the delta arrow turns emerald when the value drops.
+- Imported Switch, Slider, Sparkles, ArrowUpRight, ArrowDownRight from shadcn/ui and lucide-react.
+
+Stage Summary:
+- The Finance tab now models the user's reasoning: dMRV's evidence-backed data → reduced verifier site time → lower verification cost; auditable hash chain → trust → higher credit price.
+- Verified end-to-end via Agent Browser (TH mode, default sliders):
+  - Base verify 150,000 THB → adjusted 75,000 THB (save 75,000/cycle).
+  - Base price 350 THB → adjusted 385 THB (+35/ton).
+  - Cumulative savings 225,000 THB over the 10-year project (3 verify cycles).
+  - Baseline NPV -80,722 THB (NOT viable) → adjusted +174,190 THB (viable).
+  - Baseline IRR -1.96% → adjusted +18.68%.
+  - Baseline breakeven 950.99 → adjusted 751.95 THB/tCO₂e (-199.04 delta, emerald).
+- Slider drag from 50% → 90% reduction: adjusted verify dropped to 15,000 THB, savings/cycle up to 135,000 THB.
+- Toggle off switch: panel dims (opacity-50 + pointer-events-none), aria-checked=false confirmed via JS.
+- English version mirrors all labels correctly.
+- Lint clean, page renders 200 OK, dev server stable.
