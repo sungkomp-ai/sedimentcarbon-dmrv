@@ -29,11 +29,11 @@ const DEFAULT_POLYGON = JSON.stringify({
   type: "Polygon",
   coordinates: [
     [
-      [102.102, 14.97],
-      [102.118, 14.97],
-      [102.118, 14.995],
-      [102.102, 14.995],
-      [102.102, 14.97],
+      [102.1020, 14.9700],
+      [102.1086, 14.9700],
+      [102.1086, 14.9764],
+      [102.1020, 14.9764],
+      [102.1020, 14.9700],
     ],
   ],
 });
@@ -247,11 +247,14 @@ export function FarmFormDialog({ open, onOpenChange }: FarmDialogProps) {
               Reset
             </Button>
           </div>
-          <MiniMap value={geom} onChange={setGeom} />
+          <MiniMap value={geom} onChange={setGeom} style="satellite" />
+          <p className="text-xs text-muted-foreground">
+            {t("farms.geomHint")} · {t("farms.areaHelp")}
+          </p>
           <Textarea
             value={geom}
             onChange={(e) => setGeom(e.target.value)}
-            rows={4}
+            rows={3}
             className="font-mono text-xs"
             placeholder='{"type":"Polygon","coordinates":[...]}'
           />

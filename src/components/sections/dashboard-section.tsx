@@ -69,7 +69,7 @@ interface DashboardData {
 }
 
 export function DashboardSection() {
-  const { t, fmt, fmtDate, locale } = useI18n();
+  const { t, fmt, fmtDate, fmtArea, locale } = useI18n();
   const { setSection } = useApp();
   const { data, isLoading } = useQuery<DashboardData>({
     queryKey: ["dashboard"],
@@ -137,7 +137,7 @@ export function DashboardSection() {
           icon={MapPinned}
           iconClassName="text-emerald-600 dark:text-emerald-400"
           accentClassName="bg-emerald-500/10"
-          hint={fmt(data.totalAreaHa, { maximumFractionDigits: 2 }) + " " + t("unit.ha")}
+          hint={fmtArea(data.totalAreaHa)}
         />
         <KpiCard
           label={t("dashboard.totalSamples")}

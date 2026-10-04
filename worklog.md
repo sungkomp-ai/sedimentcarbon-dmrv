@@ -53,3 +53,44 @@ Stage Summary:
 - Bilingual UI (TH/EN) with BE/CE date handling, dark/light theme toggle, sticky footer.
 - Hash-chain audit trail intact and verifiable.
 - All 9 API routes return correct data; lint passes clean.
+
+---
+Task ID: 2
+Agent: main
+Task: Add real Leaflet map + convert area units to "ไร่" when UI is in Thai.
+
+Work Log:
+- Installed `leaflet`, `react-leaflet` (v5, React 19-compatible), `@types/leaflet`.
+- Added bilingual area unit helper `src/lib/i18n/area.ts`:
+  - HA_TO_RAI = 6.25 (1 ha = 6.25 rai, 1 rai = 1600 m²).
+  - `fmtArea(ha, locale)` → TH shows "312.50 ไร่", EN shows "50.00 ha".
+  - `areaValue`, `haToRai`, `raiToHa` helpers.
+- Extended `useI18n()` hook with `fmtArea`, `areaValue`, `haToRai`, `raiToHa`, `isThai`.
+- Added new translation keys: `unit.rai`, `farms.areaRai`, `farms.areaHelp`, `dashboard.totalAreaRai`.
+- Replaced the SVG-only MiniMap with a real `LeafletMap` component:
+  - OpenStreetMap / Esri satellite / OpenTopoMap tile layers.
+  - Click to add vertices, double-click to clear, auto-fit-to-bounds.
+  - Polygon + Polyline + CircleMarker overlays with green accent.
+  - HUD shows locale-aware area (rai for TH, ha for EN).
+  - Loaded via `next/dynamic` with `ssr: false` (Leaflet needs `window`).
+- Updated all area displays across the app:
+  - Dashboard KPI hint: `fmtArea(totalAreaHa)`.
+  - Farms section: total area KPI + per-farm card area.
+  - Farm form dialog: switched to satellite map style + area help text.
+  - Calculator credits tab: input field is "พื้นที่ (ไร่)" in TH, default 312.5; converts back to ha for API.
+  - Calculator finance tab: same rai/ha conversion.
+  - Calculator aggregation tab: input list in rai (TH) / ha (EN), output uses fmtArea.
+- Fixed seed polygon to be ~50 ha (was ~478 ha) so it matches the stored `areaHa: 50`.
+- Added `key={locale}` to all calculator tab panels so they remount when the language toggles, resetting inputs to locale-appropriate defaults (312.5 rai for TH vs 50 ha for EN).
+- Fixed lint issues: removed dead `canonical` variable in audit.ts, removed unused eslint-disable directive, refactored map drawing-state to use derived `parsedPoints` + `draft` (no setState in effect).
+
+Stage Summary:
+- Real Leaflet map (with OSM/satellite/topo tile options) replaces the SVG-only approach.
+- Area displays in ไร่ for Thai UI, ha for English — both display and input fields.
+- All calculations stay in ha internally; only the UI layer converts.
+- Verified end-to-end via Agent Browser:
+  - Dashboard shows "312.50 ไร่" (was previously "50 ha").
+  - Farms section card shows "312.50 ไร่" and the Leaflet HUD shows "316.04 ไร่ · 4 pts".
+  - Calculator: TH shows "พื้นที่ (ไร่)" default 312.5; EN shows "Project Area (ha)" default 50.
+  - Computing credits with 312.5 rai input yields correct results (T-VER net 649.425 tCO₂e) — proving the rai→ha conversion works.
+  - Lint clean, page renders 200 OK, dev server stable.

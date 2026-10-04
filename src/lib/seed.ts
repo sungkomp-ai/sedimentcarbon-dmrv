@@ -28,16 +28,17 @@ async function main() {
     },
   });
 
-  // Demo farm: 50 ha, simple polygon near Nakhon Ratchasima
+  // Demo farm: ~50 ha. Polygon sized so that spherical-area ≈ 50 ha.
+  // At lat ~14.98°, 0.0066° lon × 0.0064° lat ≈ 707m × 711m ≈ 50.3 ha.
   const farmPolygon = JSON.stringify({
     type: "Polygon",
     coordinates: [
       [
-        [102.102, 14.97],
-        [102.118, 14.97],
-        [102.118, 14.995],
-        [102.102, 14.995],
-        [102.102, 14.97],
+        [102.1020, 14.9700],
+        [102.1086, 14.9700],
+        [102.1086, 14.9764],
+        [102.1020, 14.9764],
+        [102.1020, 14.9700],
       ],
     ],
   });

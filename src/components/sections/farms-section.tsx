@@ -42,7 +42,7 @@ interface Farm {
 }
 
 export function FarmsSection() {
-  const { t, fmt, fmtDate } = useI18n();
+  const { t, fmt, fmtDate, fmtArea, locale } = useI18n();
   const { setSection, setSelectedFarmId } = useApp();
   const { toast } = useToast();
   const qc = useQueryClient();
@@ -94,8 +94,8 @@ export function FarmsSection() {
         />
         <KpiCard
           label={t("dashboard.totalArea")}
-          value={fmt(totalArea, { maximumFractionDigits: 2 })}
-          unit={t("unit.ha")}
+          value={fmtArea(totalArea, { digits: 2, withUnit: false })}
+          unit={locale === "th" ? t("unit.rai") : t("unit.haEn")}
           icon={Layers3}
           accentClassName="bg-sky-500/10"
           iconClassName="text-sky-600 dark:text-sky-400"
@@ -150,7 +150,7 @@ export function FarmsSection() {
                 <div className="flex items-center justify-between">
                   <span className="text-muted-foreground">{t("farms.area")}</span>
                   <span className="font-medium tabular-nums">
-                    {fmt(f.areaHa, { maximumFractionDigits: 2 })} {t("unit.ha")}
+                    {fmtArea(f.areaHa)}
                   </span>
                 </div>
                 {f.soilType && (

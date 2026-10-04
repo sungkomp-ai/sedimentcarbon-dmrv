@@ -46,7 +46,7 @@ import {
 } from "recharts";
 
 export function CalculatorSection() {
-  const { t } = useI18n();
+  const { t, locale } = useI18n();
   return (
     <div className="space-y-6">
       <div className="space-y-1">
@@ -72,19 +72,22 @@ export function CalculatorSection() {
             <Network className="h-3.5 w-3.5" /> {t("calc.tab.aggregation")}
           </TabsTrigger>
         </TabsList>
-        <TabsContent value="credits" className="mt-4">
+        {/* key=locale forces a clean remount when language toggles, so the
+            input fields re-initialise with the locale-appropriate default unit
+            (ha for EN, rai for TH) and previous results are cleared. */}
+        <TabsContent value="credits" className="mt-4" key={`credits-${locale}`}>
           <CreditsTab />
         </TabsContent>
-        <TabsContent value="soc" className="mt-4">
+        <TabsContent value="soc" className="mt-4" key={`soc-${locale}`}>
           <SocStockTab />
         </TabsContent>
-        <TabsContent value="finance" className="mt-4">
+        <TabsContent value="finance" className="mt-4" key={`finance-${locale}`}>
           <FinanceTab />
         </TabsContent>
-        <TabsContent value="samples" className="mt-4">
+        <TabsContent value="samples" className="mt-4" key={`samples-${locale}`}>
           <SampleAdequacyTab />
         </TabsContent>
-        <TabsContent value="aggregation" className="mt-4">
+        <TabsContent value="aggregation" className="mt-4" key={`agg-${locale}`}>
           <AggregationTab />
         </TabsContent>
       </Tabs>
@@ -94,12 +97,13 @@ export function CalculatorSection() {
 
 // -------- Credits Tab --------
 function CreditsTab() {
-  const { t, fmt } = useI18n();
+  const { t, fmt, fmtArea, isThai, haToRai, raiToHa } = useI18n();
   const { toast } = useToast();
   const [baseline, setBaseline] = useState("32.4");
   const [current, setCurrent] = useState("36.9");
   const [years, setYears] = useState("5");
-  const [area, setArea] = useState("50");
+  // area shown in locale unit (rai for TH, ha for EN). Default 50 ha = 312.5 rai.
+  const [area, setArea] = useState(isThai ? "312.5" : "50");
   const [fertiliser, setFertiliser] = useState("60");
   const [flooded, setFlooded] = useState("0");
   const [diesel, setDiesel] = useState("0");
@@ -115,7 +119,7 @@ function CreditsTab() {
         socBaselineTHa: Number(baseline),
         socCurrentTHa: Number(current),
         years: Number(years),
-        areaHa: Number(area),
+        areaHa: isThai ? raiToHa(Number(area)) : Number(area),
         nFertiliserKgHaYr: Number(fertiliser) || 0,
         floodedDaysYr: Number(flooded) || 0,
         dieselLitreTotal: Number(diesel) || 0,
@@ -155,7 +159,7 @@ function CreditsTab() {
             <Field label={t("calc.credits.baseline")} value={baseline} onChange={setBaseline} />
             <Field label={t("calc.credits.current")} value={current} onChange={setCurrent} />
             <Field label={t("calc.credits.years")} value={years} onChange={setYears} />
-            <Field label={t("calc.credits.area")} value={area} onChange={setArea} />
+            <Field label={isThai ? t("farms.areaRai") : t("calc.credits.area")} value={area} onChange={setArea} />
             <Field label={t("calc.credits.fertiliser")} value={fertiliser} onChange={setFertiliser} />
             <Field label={t("calc.credits.flooded")} value={flooded} onChange={setFlooded} />
             <Field label={t("calc.credits.diesel")} value={diesel} onChange={setDiesel} />
@@ -425,7 +429,7 @@ function SocStockTab() {
 
 // -------- Finance Tab --------
 function FinanceTab() {
-  const { t, fmt } = useI18n();
+  const { t, fmt, isThai, raiToHa } = useI18n();
   const [annualCredits, setAnnualCredits] = useState("125.6");
   const [price, setPrice] = useState("350");
   const [capex, setCapex] = useState("4500");
@@ -435,7 +439,7 @@ function FinanceTab() {
   const [years, setYears] = useState("10");
   const [discount, setDiscount] = useState("8");
   const [cobenefit, setCobenefit] = useState("1200");
-  const [area, setArea] = useState("50");
+  const [area, setArea] = useState(isThai ? "312.5" : "50");
   const [result, setResult] = useState<FinanceResult | null>(null);
   const [loading, setLoading] = useState(false);
 
@@ -443,7 +447,7 @@ function FinanceTab() {
     setLoading(true);
     try {
       const body = {
-        areaHa: Number(area),
+        areaHa: isThai ? raiToHa(Number(area)) : Number(area),
         annualCreditsTco2e: Number(annualCredits),
         pricePerTco2e: Number(price),
         capexPerHa: Number(capex),
@@ -475,7 +479,7 @@ function FinanceTab() {
         </CardHeader>
         <CardContent className="space-y-3">
           <div className="grid grid-cols-2 gap-3">
-            <Field label={t("calc.credits.area")} value={area} onChange={setArea} />
+            <Field label={isThai ? t("farms.areaRai") : t("calc.credits.area")} value={area} onChange={setArea} />
             <Field label={`${t("credit.net")}/yr (${t("unit.tco2e")})`} value={annualCredits} onChange={setAnnualCredits} />
             <Field label={t("calc.fin.price")} value={price} onChange={setPrice} />
             <Field label={t("calc.fin.capex")} value={capex} onChange={setCapex} />
@@ -630,8 +634,8 @@ function SampleAdequacyTab() {
 
 // -------- Aggregation Tab --------
 function AggregationTab() {
-  const { t, fmt } = useI18n();
-  const [areas, setAreas] = useState("10, 15, 25, 50, 30");
+  const { t, fmt, fmtArea, isThai, raiToHa } = useI18n();
+  const [areas, setAreas] = useState(isThai ? "62.5, 93.75, 156.25, 312.5, 187.5" : "10, 15, 25, 50, 30");
   const [cost, setCost] = useState("150000");
   const [result, setResult] = useState<{ nFarms: number; totalAreaHa: number; verificationCostPerHaSolo: number; verificationCostPerHaGrouped: number; savingPct: number } | null>(null);
   const [loading, setLoading] = useState(false);
@@ -639,7 +643,11 @@ function AggregationTab() {
   async function compute() {
     setLoading(true);
     try {
-      const arr = areas.split(/[,\s]+/).map((s) => Number(s)).filter((n) => !Number.isNaN(n) && n > 0);
+      const arr = areas
+        .split(/[,\s]+/)
+        .map((s) => Number(s))
+        .filter((n) => !Number.isNaN(n) && n > 0)
+        .map((v) => (isThai ? raiToHa(v) : v));
       const res = await fetch("/api/calculate/aggregation", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -662,8 +670,12 @@ function AggregationTab() {
         <div className="grid gap-4 lg:grid-cols-3">
           <div className="lg:col-span-2 space-y-3">
             <div className="space-y-1.5">
-              <Label>{t("calc.aggregation.areas")}</Label>
+              <Label>
+                {t("calc.aggregation.areas")}
+                {isThai ? ` (${t("unit.rai")})` : ` (ha)`}
+              </Label>
               <Input value={areas} onChange={(e) => setAreas(e.target.value)} className="font-mono text-xs" />
+              <p className="text-xs text-muted-foreground">{t("farms.areaHelp")}</p>
             </div>
             <div className="space-y-1.5">
               <Label>{t("calc.aggregation.verifyCost")}</Label>
@@ -686,15 +698,15 @@ function AggregationTab() {
                 </div>
                 <div className="flex items-center justify-between">
                   <span className="text-xs text-muted-foreground">{t("dashboard.totalArea")}</span>
-                  <span className="font-semibold tabular-nums">{fmt(result.totalAreaHa)} ha</span>
+                  <span className="font-semibold tabular-nums">{fmtArea(result.totalAreaHa)}</span>
                 </div>
                 <div className="flex items-center justify-between">
                   <span className="text-xs text-muted-foreground">{t("calc.aggregation.solo")}</span>
-                  <span className="font-semibold tabular-nums">{fmt(result.verificationCostPerHaSolo)} THB</span>
+                  <span className="font-semibold tabular-nums">{fmt(result.verificationCostPerHaSolo)} THB/{isThai ? t("unit.rai") : "ha"}</span>
                 </div>
                 <div className="flex items-center justify-between">
                   <span className="text-xs text-muted-foreground">{t("calc.aggregation.grouped")}</span>
-                  <span className="font-semibold tabular-nums text-emerald-600 dark:text-emerald-400">{fmt(result.verificationCostPerHaGrouped)} THB</span>
+                  <span className="font-semibold tabular-nums text-emerald-600 dark:text-emerald-400">{fmt(result.verificationCostPerHaGrouped)} THB/{isThai ? t("unit.rai") : "ha"}</span>
                 </div>
                 <div className="pt-2 border-t">
                   <Badge variant="default" className="bg-emerald-600">
