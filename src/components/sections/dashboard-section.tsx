@@ -27,6 +27,7 @@ const DashboardMap = dynamic(
 import {
   MapPinned,
   MapPin,
+  Leaf,
   Layers3,
   TestTube2,
   Banknote,
@@ -157,10 +158,77 @@ export function DashboardSection() {
             <Badge variant="secondary" className="ml-1">
               {data.farms.length} {locale === "th" ? "แปลง" : "farms"}
             </Badge>
+            {data.farms.some((f) => (f.elevationM ?? 0) >= 500) && (
+              <Badge variant="outline" className="text-amber-700 dark:text-amber-300 border-amber-300 dark:border-amber-700">
+                <MapPin className="h-3 w-3 mr-1" />
+                {t("farms.highlandBadge")}
+              </Badge>
+            )}
           </CardTitle>
         </CardHeader>
         <CardContent className="p-0">
           <DashboardMap farms={data.farms} height="380px" />
+        </CardContent>
+      </Card>
+
+      {/* Plot Design Gallery: Nan highland sediment-trap design */}
+      <Card>
+        <CardHeader className="pb-3">
+          <CardTitle className="flex items-center gap-2 text-base">
+            <Leaf className="h-4 w-4 text-emerald-600 dark:text-emerald-400" />
+            {t("farms.plotDesignGallery")}
+            <Badge variant="outline" className="text-amber-700 dark:text-amber-300 border-amber-300 dark:border-amber-700">
+              {locale === "th" ? "จังหวัดน่าน" : "Nan Province"}
+            </Badge>
+          </CardTitle>
+          <p className="text-xs text-muted-foreground leading-relaxed pt-1">
+            {t("farms.plotDesignGalleryDesc")}
+          </p>
+        </CardHeader>
+        <CardContent>
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            <PlotDesignImage
+              src="/plots/cross-section.png"
+              title={locale === "th" ? "ภาพตัดขวางของแปลงขั้นบรรได" : "Cross-section of terraced plot"}
+              caption={locale === "th"
+                ? "ขั้นบรรได 1.5 ม. + คันหญ้าแฝก 0.8 ม. + ฝายชะลอน้ำ"
+                : "1.5 m terrace + 0.8 m vetiver bund + check dam"}
+            />
+            <PlotDesignImage
+              src="/plots/aerial-view.png"
+              title={locale === "th" ? "มุมมองจากด้านบน" : "Aerial view"}
+              caption={locale === "th"
+                ? "แปลงเอียงสลับ น้ำไหลซิกแซกจากบนลงล่าง"
+                : "Alternating slopes — water zigzags top to bottom"}
+            />
+            <PlotDesignImage
+              src="/plots/plot-closeup.png"
+              title={locale === "th" ? "แปลงใกล้ ๆ ปลูกชา/กาแฟ" : "Plot close-up with tea/coffee"}
+              caption={locale === "th"
+                ? "ปลูกพืชหมุนเวียนหรือชา กาแฟ ในแปลง"
+                : "Rotation crops, tea, or coffee inside plots"}
+            />
+          </div>
+
+          {/* Design params legend */}
+          <div className="mt-4 grid gap-2 sm:grid-cols-4 text-xs">
+            <DesignParamChip
+              label={locale === "th" ? "ความกว้างขั้นบรรได" : "Terrace width"}
+              value="1.5 m"
+            />
+            <DesignParamChip
+              label={locale === "th" ? "ความกว้างคันหญ้าแฝก" : "Vetiver bund width"}
+              value="0.8 m"
+            />
+            <DesignParamChip
+              label={locale === "th" ? "ฝายชะลอน้ำในแปลง" : "Check dam in plot"}
+              value={locale === "th" ? "มี" : "Yes"}
+            />
+            <DesignParamChip
+              label={locale === "th" ? "ทิศทางน้ำไหล" : "Water flow direction"}
+              value={locale === "th" ? "ซิกแซก (ซ้าย-ขวา)" : "Zigzag (L↔R)"}
+            />
+          </div>
         </CardContent>
       </Card>
 
@@ -336,6 +404,46 @@ function EmptyChart({ label }: { label: string }) {
   return (
     <div className="flex h-[280px] items-center justify-center text-sm text-muted-foreground">
       {label}
+    </div>
+  );
+}
+
+/** Image card for the plot design gallery. */
+function PlotDesignImage({
+  src,
+  title,
+  caption,
+}: {
+  src: string;
+  title: string;
+  caption: string;
+}) {
+  return (
+    <figure className="overflow-hidden rounded-md border bg-card">
+      <div className="relative aspect-[16/9] w-full overflow-hidden bg-muted/40">
+        <img
+          src={src}
+          alt={title}
+          className="h-full w-full object-cover"
+          loading="lazy"
+        />
+      </div>
+      <figcaption className="space-y-0.5 p-3">
+        <div className="text-xs font-medium">{title}</div>
+        <div className="text-[11px] text-muted-foreground leading-relaxed">
+          {caption}
+        </div>
+      </figcaption>
+    </figure>
+  );
+}
+
+/** Small label + value chip for the plot design params legend. */
+function DesignParamChip({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="rounded-md border bg-muted/40 px-2.5 py-1.5">
+      <div className="text-[10px] text-muted-foreground">{label}</div>
+      <div className="font-semibold tabular-nums">{value}</div>
     </div>
   );
 }

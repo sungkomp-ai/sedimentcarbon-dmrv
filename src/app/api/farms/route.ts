@@ -18,7 +18,11 @@ export async function GET() {
     areaHa: f.areaHa,
     soilType: f.soilType,
     slopePct: f.slopePct,
+    elevationM: f.elevationM,
     trapTypes: f.trapTypes ? JSON.parse(f.trapTypes) : [],
+    crops: f.crops ? JSON.parse(f.crops) : [],
+    plotDesign: f.plotDesign ? JSON.parse(f.plotDesign) : null,
+    priorLandUse: f.priorLandUse,
     projectStart: f.projectStart,
     standard: f.standard,
     creditingYears: f.creditingYears,
@@ -35,7 +39,18 @@ export async function GET() {
 
 export async function POST(req: Request) {
   const body = await req.json();
-  const { geomGeojson, trapTypes, projectStart, ...rest } = body;
+  const {
+    geomGeojson,
+    trapTypes,
+    crops,
+    plotDesign,
+    elevationM,
+    priorLandUse,
+    projectStart,
+    ownerEmail,
+    ownerName,
+    ...rest
+  } = body;
 
   if (!geomGeojson || !isValidPolygon(geomGeojson)) {
     return NextResponse.json(
@@ -46,15 +61,17 @@ export async function POST(req: Request) {
 
   const areaHa = polygonAreaHa(geomGeojson);
   const trapTypesStr = trapTypes ? JSON.stringify(trapTypes) : null;
+  const cropsStr = crops ? JSON.stringify(crops) : null;
+  const plotDesignStr = plotDesign ? JSON.stringify(plotDesign) : null;
 
   // Default owner: the demo aggregator if not provided
-  const ownerEmail = body.ownerEmail ?? "aggregator@sedimentcarbon.demo";
-  let owner = await db.user.findUnique({ where: { email: ownerEmail } });
+  const email = ownerEmail ?? "aggregator@sedimentcarbon.demo";
+  let owner = await db.user.findUnique({ where: { email } });
   if (!owner) {
     owner = await db.user.create({
       data: {
-        email: ownerEmail,
-        fullName: body.ownerName ?? "Field Officer",
+        email,
+        fullName: ownerName ?? "Field Officer",
         role: "farmer",
         locale: "th",
       },
@@ -67,7 +84,11 @@ export async function POST(req: Request) {
       ownerId: owner.id,
       geomGeojson,
       areaHa,
+      elevationM: elevationM ?? null,
+      priorLandUse: priorLandUse ?? null,
       trapTypes: trapTypesStr,
+      crops: cropsStr,
+      plotDesign: plotDesignStr,
       projectStart: projectStart ? new Date(projectStart) : null,
     },
   });

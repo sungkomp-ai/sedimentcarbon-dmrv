@@ -15,6 +15,8 @@ import { MiniMap } from "@/components/fields/mini-map";
 import {
   Plus,
   MapPin,
+  Mountain,
+  Leaf,
   Trash2,
   Layers3,
   TestTube2,
@@ -30,7 +32,17 @@ interface Farm {
   areaHa: number;
   soilType: string | null;
   slopePct: number | null;
+  elevationM: number | null;
   trapTypes: string[];
+  crops: string[];
+  plotDesign: {
+    terraceWidthM?: number;
+    bundWidthM?: number;
+    alternatingSlope?: boolean;
+    hasCheckDam?: boolean;
+    bundCrop?: string;
+  } | null;
+  priorLandUse: string | null;
   projectStart: string | null;
   standard: string | null;
   groupId: string | null;
@@ -153,16 +165,51 @@ export function FarmsSection() {
                     {fmtArea(f.areaHa)}
                   </span>
                 </div>
+                {f.elevationM != null && (
+                  <div className="flex items-center justify-between">
+                    <span className="text-muted-foreground flex items-center gap-1">
+                      <Mountain className="h-3 w-3" />
+                      {t("farms.elevation")}
+                    </span>
+                    <span className="font-medium tabular-nums">{fmt(f.elevationM)} m</span>
+                  </div>
+                )}
+                {f.slopePct != null && (
+                  <div className="flex items-center justify-between">
+                    <span className="text-muted-foreground">{t("farms.slope")}</span>
+                    <span className="font-medium tabular-nums">{fmt(f.slopePct)}%</span>
+                  </div>
+                )}
                 {f.soilType && (
                   <div className="flex items-center justify-between">
                     <span className="text-muted-foreground">{t("farms.soilType")}</span>
                     <span className="font-medium truncate max-w-[60%] text-right">{f.soilType}</span>
                   </div>
                 )}
+                {f.priorLandUse === "shifting_cultivation" && (
+                  <div className="rounded-sm bg-amber-100 px-2 py-0.5 text-[10px] text-amber-900 dark:bg-amber-950 dark:text-amber-200">
+                    {t("farms.formerShiftingCultivation")}
+                  </div>
+                )}
                 {f.projectStart && (
                   <div className="flex items-center justify-between">
                     <span className="text-muted-foreground">{t("farms.projectStart")}</span>
                     <span className="font-medium">{fmtDate(f.projectStart)}</span>
+                  </div>
+                )}
+                {f.crops.length > 0 && (
+                  <div className="space-y-1 pt-1">
+                    <div className="text-muted-foreground flex items-center gap-1 text-xs">
+                      <Leaf className="h-3 w-3" />
+                      {t("farms.cropsLabel")}
+                    </div>
+                    <div className="flex flex-wrap gap-1">
+                      {f.crops.map((c) => (
+                        <Badge key={c} variant="secondary" className="text-[10px]">
+                          {c.replace(/_/g, " ")}
+                        </Badge>
+                      ))}
+                    </div>
                   </div>
                 )}
                 <div className="flex flex-wrap gap-1 pt-1">

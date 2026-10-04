@@ -14,11 +14,13 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
+import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
 import { MiniMap } from "@/components/fields/mini-map";
 import { useI18n } from "@/lib/i18n/provider";
 import { useQueryClient } from "@tanstack/react-query";
 import { STANDARD_LIST } from "@/lib/core/standards";
+import { Mountain, Leaf } from "lucide-react";
 
 interface FarmDialogProps {
   open: boolean;
@@ -29,19 +31,76 @@ const DEFAULT_POLYGON = JSON.stringify({
   type: "Polygon",
   coordinates: [
     [
-      [102.1020, 14.9700],
-      [102.1086, 14.9700],
-      [102.1086, 14.9764],
-      [102.1020, 14.9764],
-      [102.1020, 14.9700],
+      [100.8310, 19.0410],
+      [100.8366, 19.0410],
+      [100.8366, 19.0474],
+      [100.8310, 19.0474],
+      [100.8310, 19.0410],
     ],
   ],
 });
 
+// Expanded trap types including the Nan-province highland design.
 const TRAP_TYPES = [
-  { id: "contour_bund", labelTh: "ขั้นบันไดดิน (Contour Bund)", labelEn: "Contour Bund" },
-  { id: "vegetative_strip", labelTh: "แนวพืชกักตะกอน (Vegetative Strip)", labelEn: "Vegetative Strip" },
-  { id: "check_dam", labelTh: "เขื่อนตรวจ (Check Dam)", labelEn: "Check Dam" },
+  {
+    id: "terrace_step",
+    labelTh: "ขั้นบรรไดดินกว้าง 1.5 ม.",
+    labelEn: "Terrace Step (1.5 m wide)",
+    descTh: "ทำแปลงเป็นขั้นบรรไดตามไหล่เขา เพื่อลดความชันและดักตะกอน",
+    descEn: "Cut terraces along the contour to reduce slope and trap sediment",
+  },
+  {
+    id: "vetiver_bund",
+    labelTh: "คันหญ้าแฝก 0.8 ม.",
+    labelEn: "Vetiver Bund (0.8 m)",
+    descTh: "คันดินปลูกหญ้าแฝกเพื่อยึดดินและชะลอน้ำ",
+    descEn: "Earthen bund planted with vetiver to anchor soil and slow water",
+  },
+  {
+    id: "check_dam",
+    labelTh: "ฝายชะลอน้ำ",
+    labelEn: "Check Dam",
+    descTh: "ฝายคอนกรีต/ไม้ในแปลงเพิ่มการดักตะกอนและชะลอน้ำ",
+    descEn: "Concrete/wooden weir inside plot to trap sediment and slow water",
+  },
+  {
+    id: "alternating_slope",
+    labelTh: "แปลงเอียงสลับซ้าย-ขวา",
+    labelEn: "Alternating Slope (Z-flow)",
+    descTh: "แปลงเอียงสลับกันทำให้น้ำไหลจากบนลงล่างสลับซ้าย-ขวา",
+    descEn: "Alternating slope so water zigzags top→bottom, slowing flow",
+  },
+  {
+    id: "contour_bund",
+    labelTh: "ขั้นบันไดดินตามไหล่เขา",
+    labelEn: "Contour Bund",
+    descTh: "คันดินตามแนวเส้นชั้นความสูง",
+    descEn: "Earthen bund along the contour",
+  },
+  {
+    id: "vegetative_strip",
+    labelTh: "แนวพืชกักตะกอน",
+    labelEn: "Vegetative Strip",
+    descTh: "แนวพืชพลอยใช้กักตะกอน",
+    descEn: "Strip of vegetation used to trap sediment",
+  },
+];
+
+const CROPS = [
+  { id: "tea", labelTh: "ชา", labelEn: "Tea" },
+  { id: "coffee_arabica", labelTh: "กาแฟอราบิก้า", labelEn: "Arabica Coffee" },
+  { id: "upland_rice", labelTh: "ข้าวไร่", labelEn: "Upland Rice" },
+  { id: "soybean", labelTh: "ถั่วเหลือง", labelEn: "Soybean" },
+  { id: "cover_crop", labelTh: "พืชคลุมดิน (โสน/ปอเทือง)", labelEn: "Cover Crop (Sesbania/Crotalaria)" },
+  { id: "shade_tree", labelTh: "ไม้ยืนต้นให้ร่มเงา", labelEn: "Shade Tree (Gliricidia)" },
+  { id: "rice", labelTh: "ข้าวนาปี", labelEn: "Rice (lowland)" },
+];
+
+const PRIOR_LAND_USES = [
+  { id: "shifting_cultivation", labelTh: "ไร่เลื่อนลอย (เดิม)", labelEn: "Shifting cultivation (former)" },
+  { id: "conventional_tillage", labelTh: "ไถพรวนแบบเดิม", labelEn: "Conventional tillage" },
+  { id: "fallow", labelTh: "ที่ดินทิ้งร้าง", labelEn: "Fallow land" },
+  { id: "forest_degraded", labelTh: "ป่าเสื่อมโทรม", labelEn: "Degraded forest" },
 ];
 
 export function FarmFormDialog({ open, onOpenChange }: FarmDialogProps) {
@@ -53,10 +112,20 @@ export function FarmFormDialog({ open, onOpenChange }: FarmDialogProps) {
   const [nameEn, setNameEn] = useState("");
   const [geom, setGeom] = useState(DEFAULT_POLYGON);
   const [soilType, setSoilType] = useState("Sandy loam");
-  const [slope, setSlope] = useState("3.5");
+  const [slope, setSlope] = useState("15");
+  const [elevationM, setElevationM] = useState("600");
   const [projectStart, setProjectStart] = useState("2024-01-01");
   const [standard, setStandard] = useState("TVER");
-  const [traps, setTraps] = useState<string[]>(["contour_bund"]);
+  const [traps, setTraps] = useState<string[]>(["terrace_step", "vetiver_bund", "check_dam"]);
+  const [crops, setCrops] = useState<string[]>(["cover_crop"]);
+  const [priorLandUse, setPriorLandUse] = useState("shifting_cultivation");
+  // plot design params
+  const [terraceWidth, setTerraceWidth] = useState("1.5");
+  const [bundWidth, setBundWidth] = useState("0.8");
+  const [alternatingSlope, setAlternatingSlope] = useState(true);
+  const [hasCheckDam, setHasCheckDam] = useState(true);
+  const [bundCrop, setBundCrop] = useState("vetiver");
+
   const [ownerName, setOwnerName] = useState("Field Officer");
   const [ownerEmail, setOwnerEmail] = useState("farmer@example.org");
   const [saving, setSaving] = useState(false);
@@ -66,10 +135,18 @@ export function FarmFormDialog({ open, onOpenChange }: FarmDialogProps) {
     setNameEn("");
     setGeom(DEFAULT_POLYGON);
     setSoilType("Sandy loam");
-    setSlope("3.5");
+    setSlope("15");
+    setElevationM("600");
     setProjectStart("2024-01-01");
     setStandard("TVER");
-    setTraps(["contour_bund"]);
+    setTraps(["terrace_step", "vetiver_bund", "check_dam"]);
+    setCrops(["cover_crop"]);
+    setPriorLandUse("shifting_cultivation");
+    setTerraceWidth("1.5");
+    setBundWidth("0.8");
+    setAlternatingSlope(true);
+    setHasCheckDam(true);
+    setBundCrop("vetiver");
     setOwnerName("Field Officer");
     setOwnerEmail("farmer@example.org");
   }
@@ -85,6 +162,13 @@ export function FarmFormDialog({ open, onOpenChange }: FarmDialogProps) {
     }
     setSaving(true);
     try {
+      const plotDesign = {
+        terraceWidthM: Number(terraceWidth) || 0,
+        bundWidthM: Number(bundWidth) || 0,
+        alternatingSlope,
+        hasCheckDam,
+        bundCrop,
+      };
       const res = await fetch("/api/farms", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -94,9 +178,13 @@ export function FarmFormDialog({ open, onOpenChange }: FarmDialogProps) {
           geomGeojson: geom,
           soilType,
           slopePct: Number(slope) || 0,
+          elevationM: Number(elevationM) || null,
           projectStart,
           standard,
           trapTypes: traps,
+          crops,
+          plotDesign,
+          priorLandUse,
           ownerName,
           ownerEmail,
           creditingYears: 10,
@@ -121,7 +209,7 @@ export function FarmFormDialog({ open, onOpenChange }: FarmDialogProps) {
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
+      <DialogContent className="max-w-3xl max-h-[92vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>{t("farms.new")}</DialogTitle>
           <DialogDescription>{t("farms.geomHint")}</DialogDescription>
@@ -134,7 +222,7 @@ export function FarmFormDialog({ open, onOpenChange }: FarmDialogProps) {
               id="name-th"
               value={nameTh}
               onChange={(e) => setNameTh(e.target.value)}
-              placeholder="แปลงสาธิต..."
+              placeholder="แปลงชาภูเขา บ้านป่าค้อ..."
             />
           </div>
           <div className="space-y-1.5">
@@ -143,7 +231,7 @@ export function FarmFormDialog({ open, onOpenChange }: FarmDialogProps) {
               id="name-en"
               value={nameEn}
               onChange={(e) => setNameEn(e.target.value)}
-              placeholder="Demo field..."
+              placeholder="Highland Tea Farm..."
             />
           </div>
           <div className="space-y-1.5">
@@ -162,6 +250,19 @@ export function FarmFormDialog({ open, onOpenChange }: FarmDialogProps) {
               step="0.1"
               value={slope}
               onChange={(e) => setSlope(e.target.value)}
+            />
+          </div>
+          <div className="space-y-1.5">
+            <Label htmlFor="elev" className="flex items-center gap-1.5">
+              <Mountain className="h-3.5 w-3.5" />
+              {t("farms.elevation")}
+            </Label>
+            <Input
+              id="elev"
+              type="number"
+              value={elevationM}
+              onChange={(e) => setElevationM(e.target.value)}
+              placeholder="600"
             />
           </div>
           <div className="space-y-1.5">
@@ -189,6 +290,21 @@ export function FarmFormDialog({ open, onOpenChange }: FarmDialogProps) {
             </select>
           </div>
           <div className="space-y-1.5">
+            <Label htmlFor="prior">{t("farms.priorLandUse")}</Label>
+            <select
+              id="prior"
+              value={priorLandUse}
+              onChange={(e) => setPriorLandUse(e.target.value)}
+              className="flex h-9 w-full rounded-md border border-input bg-background px-3 py-2 text-sm shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+            >
+              {PRIOR_LAND_USES.map((u) => (
+                <option key={u.id} value={u.id}>
+                  {u.labelTh} ({u.labelEn})
+                </option>
+              ))}
+            </select>
+          </div>
+          <div className="space-y-1.5">
             <Label htmlFor="owner">{t("farms.owner")}</Label>
             <Input
               id="owner"
@@ -207,9 +323,49 @@ export function FarmFormDialog({ open, onOpenChange }: FarmDialogProps) {
           </div>
         </div>
 
+        {/* Plot design params */}
+        <div className="rounded-md border bg-emerald-50/40 dark:bg-emerald-950/20 p-4 space-y-3">
+          <div className="flex items-center gap-2">
+            <Leaf className="h-4 w-4 text-emerald-600 dark:text-emerald-400" />
+            <span className="text-sm font-medium">{t("farms.plotDesignTitle")}</span>
+            <Badge variant="outline" className="text-[10px]">
+              {t("farms.plotDesignHint")}
+            </Badge>
+          </div>
+          <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+            <div className="space-y-1">
+              <Label htmlFor="tw" className="text-xs">{t("farms.terraceWidth")}</Label>
+              <Input id="tw" type="number" step="0.1" value={terraceWidth} onChange={(e) => setTerraceWidth(e.target.value)} className="h-8 text-sm" />
+            </div>
+            <div className="space-y-1">
+              <Label htmlFor="bw" className="text-xs">{t("farms.bundWidth")}</Label>
+              <Input id="bw" type="number" step="0.1" value={bundWidth} onChange={(e) => setBundWidth(e.target.value)} className="h-8 text-sm" />
+            </div>
+            <div className="space-y-1">
+              <Label htmlFor="bc" className="text-xs">{t("farms.bundCrop")}</Label>
+              <select id="bc" value={bundCrop} onChange={(e) => setBundCrop(e.target.value)} className="flex h-8 w-full rounded-md border border-input bg-background px-2 py-1 text-xs">
+                <option value="vetiver">หญ้าแฝก (Vetiver)</option>
+                <option value="leucaena">ยูคาลิปตัส (Leucaena)</option>
+                <option value="paspalum">หญ้าพาสพาลัม (Paspalum)</option>
+              </select>
+            </div>
+            <div className="space-y-1 flex flex-col gap-1.5">
+              <label className="flex items-center gap-1.5 text-xs cursor-pointer">
+                <Checkbox checked={alternatingSlope} onCheckedChange={(v) => setAlternatingSlope(Boolean(v))} />
+                {t("farms.alternatingSlope")}
+              </label>
+              <label className="flex items-center gap-1.5 text-xs cursor-pointer">
+                <Checkbox checked={hasCheckDam} onCheckedChange={(v) => setHasCheckDam(Boolean(v))} />
+                {t("farms.hasCheckDam")}
+              </label>
+            </div>
+          </div>
+        </div>
+
+        {/* Trap types */}
         <div className="space-y-2">
           <Label>{t("farms.trapTypes")}</Label>
-          <div className="grid gap-2 sm:grid-cols-3">
+          <div className="grid gap-2 sm:grid-cols-2">
             {TRAP_TYPES.map((ttype) => {
               const checked = traps.includes(ttype.id);
               return (
@@ -226,8 +382,38 @@ export function FarmFormDialog({ open, onOpenChange }: FarmDialogProps) {
                     className="mt-0.5"
                   />
                   <div className="flex flex-col gap-0.5">
-                    <span className="text-xs font-medium">{ttype.labelEn}</span>
-                    <span className="text-xs text-muted-foreground">{ttype.labelTh}</span>
+                    <span className="text-xs font-medium">{ttype.labelTh}</span>
+                    <span className="text-[10px] text-muted-foreground">{ttype.labelEn}</span>
+                    <span className="text-[10px] text-muted-foreground/80">{ttype.descTh}</span>
+                  </div>
+                </label>
+              );
+            })}
+          </div>
+        </div>
+
+        {/* Crops */}
+        <div className="space-y-2">
+          <Label>{t("farms.cropsLabel")}</Label>
+          <div className="grid gap-2 sm:grid-cols-3">
+            {CROPS.map((c) => {
+              const checked = crops.includes(c.id);
+              return (
+                <label
+                  key={c.id}
+                  className="flex items-start gap-2 rounded-md border p-2 cursor-pointer hover:bg-muted/50 has-[:checked]:bg-emerald-50/60 dark:has-[:checked]:bg-emerald-950/20"
+                >
+                  <Checkbox
+                    checked={checked}
+                    onCheckedChange={(v) => {
+                      if (v) setCrops([...crops, c.id]);
+                      else setCrops(crops.filter((x) => x !== c.id));
+                    }}
+                    className="mt-0.5"
+                  />
+                  <div className="flex flex-col gap-0.5">
+                    <span className="text-xs font-medium">{c.labelTh}</span>
+                    <span className="text-[10px] text-muted-foreground">{c.labelEn}</span>
                   </div>
                 </label>
               );

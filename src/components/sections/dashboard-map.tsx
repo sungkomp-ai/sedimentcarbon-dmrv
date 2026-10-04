@@ -26,11 +26,23 @@ export interface DashboardFarm {
   nameTh: string;
   nameEn: string | null;
   areaHa: number;
+  slopePct?: number | null;
+  elevationM?: number | null;
   standard: string | null;
   sampleCount: number;
   sedimentCount: number;
   geomGeojson: string;
   soilType?: string | null;
+  trapTypes?: string[];
+  crops?: string[];
+  plotDesign?: {
+    terraceWidthM?: number;
+    bundWidthM?: number;
+    alternatingSlope?: boolean;
+    hasCheckDam?: boolean;
+    bundCrop?: string;
+  } | null;
+  priorLandUse?: string | null;
 }
 
 interface DashboardMapProps {
@@ -152,6 +164,9 @@ export function DashboardMap({
           const rule = STANDARD_LIST.find((s) => s.code === f.standard);
           const color = rule?.accent ?? "#16a34a";
           const positions: LatLngExpression[] = toLatLng(f.polygon.coordinates[0]);
+          const crops = f.crops ?? [];
+          const isHighland = (f.elevationM ?? 0) >= 500;
+          const isFormerShifting = f.priorLandUse === "shifting_cultivation";
           return (
             <Polygon
               key={f.id}
@@ -164,17 +179,32 @@ export function DashboardMap({
               }}
             >
               <Tooltip sticky direction="top">
-                <div className="text-xs space-y-0.5">
+                <div className="text-xs space-y-0.5 max-w-[280px]">
                   <div className="font-semibold">
                     {isThai ? f.nameTh : f.nameEn ?? f.nameTh}
                   </div>
                   <div className="text-[10px] opacity-80">
                     {f.standard ?? "—"} · {fmtArea(f.areaHa, { digits: 2 })}
+                    {f.elevationM != null && (
+                      <span className="ml-1">
+                        · {isThai ? "สูง" : "Elev."} {f.elevationM}m
+                      </span>
+                    )}
                   </div>
+                  {crops.length > 0 && (
+                    <div className="text-[10px] opacity-80">
+                      {isThai ? "พืช" : "Crops"}: {crops.join(", ")}
+                    </div>
+                  )}
                   <div className="text-[10px] opacity-80">
                     {isThai ? "ตัวอย่างดิน" : "Samples"}: {f.sampleCount} ·{" "}
                     {isThai ? "ตะกอน" : "Sediment"}: {f.sedimentCount}
                   </div>
+                  {isFormerShifting && (
+                    <div className="text-[10px] mt-1 inline-block rounded-sm bg-amber-100 px-1.5 py-0.5 text-amber-900 dark:bg-amber-950 dark:text-amber-200">
+                      {isThai ? "เดิมทำไร่เลื่อนลอย" : "Former shifting cultivation"}
+                    </div>
+                  )}
                 </div>
               </Tooltip>
             </Polygon>

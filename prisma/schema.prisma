@@ -37,6 +37,10 @@ model Farm {
   slopePct      Float?
   soilType      String?
   trapTypes     String? // JSON array as string: ["contour_bund", ...]
+  crops         String? // JSON array as string: ["tea", "coffee", ...]
+  elevationM    Int?    // metres above sea level (highland farms)
+  plotDesign    String? // JSON object as string: { terraceWidthM, bundWidthM, alternatingSlope, hasCheckDam }
+  priorLandUse  String? // e.g. "shifting_cultivation" (ไร่เลื่อนลอย)
   projectStart  DateTime?
   standard      String? // TVER | VCS | GOLD_STANDARD | ISO14064
   creditingYears Int   @default(10)

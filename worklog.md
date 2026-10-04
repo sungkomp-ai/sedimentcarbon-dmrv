@@ -160,3 +160,46 @@ Stage Summary:
 - Toggle off switch: panel dims (opacity-50 + pointer-events-none), aria-checked=false confirmed via JS.
 - English version mirrors all labels correctly.
 - Lint clean, page renders 200 OK, dev server stable.
+
+---
+Task ID: 5
+Agent: main
+Task: Add Nan-province highland farms (formerly shifting cultivation) with the specific sediment-trap design and create plot design illustrations.
+
+Work Log:
+- Generated 3 illustrations via image-generation skill (z-ai CLI):
+  - /public/plots/cross-section.png — cross-section of terraced plot with vetiver bund and check dam
+  - /public/plots/aerial-view.png — aerial view showing alternating slope pattern
+  - /public/plots/plot-closeup.png — close-up of tea/coffee growing on terraces
+- Extended Prisma schema with 4 new fields on Farm:
+  - crops (JSON string array)
+  - elevationM (highland elevation)
+  - plotDesign (JSON object: terraceWidthM, bundWidthM, alternatingSlope, hasCheckDam, bundCrop)
+  - priorLandUse (e.g. "shifting_cultivation")
+- Rewrote src/lib/seed.ts with 5 farms total:
+  - demo-farm-001 (PDF spec, 50 ha flat field, Nakhon Ratchasima)
+  - nan-farm-001 (5.2 ha tea farm, Mae Charim, 1100m, formerly shifting cultivation)
+  - nan-farm-002 (4 ha arabica coffee, Pua, 1250m, vetiver + check dams)
+  - nan-farm-003 (7 ha rotation crops, Santi Suk, 600m, rice + soybean + cover crop)
+  - nan-farm-004 (6.5 ha mixed tea & coffee, Bo Kluea, 1400m, full design package)
+- Each Nan farm has the spec's exact design: 1.5 m terrace + 0.8 m vetiver bund + check dam + alternating slope.
+- Expanded trap types and added crops picker in farm-form-dialog.tsx:
+  - New trap types: terrace_step, vetiver_bund, check_dam (renamed), alternating_slope.
+  - Each with TH/EN labels and 1-line description.
+  - New crops list: tea, coffee_arabica, upland_rice, soybean, cover_crop, shade_tree, rice.
+  - Plot design params card (terrace width, bund width, bund crop, alternating slope, has check dam) with default values matching the user's spec (1.5 m / 0.8 m / vetiver / on / on).
+  - Prior land use picker (shifting_cultivation / conventional_tillage / fallow / forest_degraded).
+  - Elevation input with Mountain icon.
+- Updated /api/farms (GET + POST) and /api/dashboard to round-trip the new fields.
+- Updated dashboard-map.tsx tooltip to show: farm name, standard, area (locale-aware rai/ha), elevation, crops, sample/sediment counts, and a "เดิมทำไร่เลื่อนลอย" amber badge for former shifting cultivation.
+- Updated farms-section.tsx card to display elevation (Mountain icon), slope %, crops (Leaf icon, badges), and prior-land-use badge.
+- Added a new "ภาพประกอบแปลงดักตะกอนดิน / Sediment-Trap Plot Design Gallery" card to the dashboard with the 3 generated images, captions (TH/EN), and a 4-chip legend showing the design params (terrace 1.5 m, vetiver bund 0.8 m, check dam yes, water flow zigzag L↔R).
+- Added highland badge to the dashboard map header when any farm is at elevation ≥ 500 m.
+
+Stage Summary:
+- Database seeded with 5 farms (1 lowland + 4 Nan highland), 60 soil samples with intact hash-chain audit, 19 sediment measurements, 19 management activities.
+- Plot design gallery renders 3 generated illustrations on the dashboard (verified loaded at 1344px width via Agent Browser).
+- Dashboard map shows 5 polygons, "พื้นที่สูง" badge, all Nan farms with tooltips showing crops + elevation + "เดิมทำไร่เลื่อนลอย" badge.
+- Farm form dialog now exposes all design parameters and the new trap/crop pickers, defaults match the user's spec (1.5 m terrace, 0.8 m vetiver bund, alternating slope on, check dam on).
+- Total area: 72.7 ha (~454 ไร่), all credits/sediment/audit calculations still pass through hash-chain verification.
+- Lint clean, dev server stable, page renders 200 OK.
