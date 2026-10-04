@@ -65,7 +65,7 @@ export const TRANSLATIONS: Record<Locale, Record<string, string>> = {
     "farms.formerShiftingCultivation": "เดิมทำไร่เลื่อนลอย",
     "farms.elevLabel": "สูง",
     "farms.plotDesignGallery": "ภาพประกอบแปลงดักตะกอนดิน",
-    "farms.plotDesignGalleryDesc": "การออกแบบแปลงบนพื้นที่สูงในจังหวัดน่าน ที่เดิมทำไร่เลื่อนลอย ปรับมาเป็นเกษตรดักตะกอนดินแบบขั้นบรรได 1.5 ม. พร้อมคันหญ้าแฝก 0.8 ม. และฝายชะลอน้ำในแปลง แปลงเอียงสลับกันทำให้น้ำไหลซิกแซกจากชั้นบนลงล่าง ภายในแปลงปลูกพืชหมุนเวียนหรือชา กาแฟ",
+    "farms.plotDesignGalleryDesc": "การออกแบบแปลงบนพื้นที่สูงในจังหวัดน่าน ที่เดิมทำไร่เลื่อนลอย ปรับมาเป็นเกษตรดักตะกอนดินแบบขั้นบรรได 1.5 ม. พร้อมคันหญ้าแฝก 0.8 ม. และฝายชะลอน้ำในแปลง น้ำถูกบังคับให้ไหลจากต้นแปลงบน → ท้ายแปลง → ลงต้นแปลงถัดไป → สลับซ้าย-ขวาเป็นรูปแบบซิกแซก ภายในแปลงปลูกพืชหมุนเวียนหรือชา กาแฟ",
 
     "samples.title": "ตัวอย่างดินและผลวิเคราะห์ SOC",
     "samples.new": "เพิ่มผลตัวอย่าง",
@@ -302,7 +302,7 @@ export const TRANSLATIONS: Record<Locale, Record<string, string>> = {
     "farms.formerShiftingCultivation": "Former shifting cultivation",
     "farms.elevLabel": "Elev.",
     "farms.plotDesignGallery": "Sediment-Trap Plot Design Gallery",
-    "farms.plotDesignGalleryDesc": "Highland farm design in Nan province, formerly shifting cultivation, converted to sediment-trap agriculture with 1.5 m terraces, 0.8 m vetiver bunds, and check dams inside plots. Plots angled alternately so water zigzags top→bottom. Inside plots: rotation crops, tea, or coffee.",
+    "farms.plotDesignGalleryDesc": "Highland farm design in Nan province, formerly shifting cultivation, converted to sediment-trap agriculture with 1.5 m terraces, 0.8 m vetiver bunds, and check dams inside plots. Water is forced to flow: top of upper plot → end of plot → start of next plot, alternating left-right in a zigzag pattern. Inside plots: rotation crops, tea, or coffee.",
 
     "samples.title": "Soil Samples & SOC Lab Results",
     "samples.new": "Add Sample",

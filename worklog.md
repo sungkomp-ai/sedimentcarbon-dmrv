@@ -203,3 +203,34 @@ Stage Summary:
 - Farm form dialog now exposes all design parameters and the new trap/crop pickers, defaults match the user's spec (1.5 m terrace, 0.8 m vetiver bund, alternating slope on, check dam on).
 - Total area: 72.7 ha (~454 ไร่), all credits/sediment/audit calculations still pass through hash-chain verification.
 - Lint clean, dev server stable, page renders 200 OK.
+
+---
+Task ID: 6
+Agent: main
+Task: Regenerate the cross-section image so water clearly flows zigzag (top of upper plot → end of plot → start of next plot, alternating L↔R).
+
+Work Log:
+- First generation attempt: prompt described the zigzag pattern but the model didn't render it clearly (water flowed down side channels, not across each plot).
+- Verified via VLM (z-ai vision with glm-5v-turbo): (1) terraced plots visible — YES; (2) zigzag water flow alternating L↔R — NO.
+- Rewrote prompt with explicit numbered arrow sequence:
+  - Arrow 1: LEFT end of TOP terrace → RIGHT end of TOP terrace (flowing left-to-right)
+  - Arrow 2: drops RIGHT end of top → RIGHT end of second terrace
+  - Arrow 3: RIGHT end of second → LEFT end of second (flowing right-to-left)
+  - Arrow 4: drops LEFT end of second → LEFT end of third
+  - Arrow 5: LEFT end of third → RIGHT end of third (flowing left-to-right)
+  - Arrow 6: drops RIGHT end of third → RIGHT end of bottom
+  - Arrow 7: RIGHT end of bottom → LEFT end of bottom (flowing right-to-left)
+- Regenerated at /public/plots/cross-section.png (125KB, 1344×768).
+- Re-verified via VLM:
+  - (1) แปลงขั้นบรรไดเรียงซ้อนลงตามลาดเขา 4 แปลง: YES
+  - (2) น้ำไหลซิกแซกสลับซ้าย-ขวา (L→R, R→L, L→R, R→L): YES
+- Updated the dashboard caption + main description translation (TH and EN) to match the explicit zigzag pattern:
+  - TH: "น้ำถูกบังคับให้ไหลจากต้นแปลงบน → ท้ายแปลง → ลงต้นแปลงถัดไป → สลับซ้าย-ขวา"
+  - EN: "Water forced: top of upper plot → end of plot → start of next plot, alternating L↔R"
+- Updated aerial-view caption to emphasise the zigzag as well.
+- Verified in browser: new image loaded (cache-busted) at 1344×768.
+
+Stage Summary:
+- Cross-section image now clearly shows the zigzag water flow: top-of-plot → end-of-plot → next-plot-start, alternating left↔right.
+- Both terraced slope and zigzag flow confirmed by VLM vision verification.
+- All captions and the gallery description in TH/EN updated to describe the explicit zigzag pattern.

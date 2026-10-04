@@ -189,17 +189,17 @@ export function DashboardSection() {
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
             <PlotDesignImage
               src="/plots/cross-section.png"
-              title={locale === "th" ? "ภาพตัดขวางของแปลงขั้นบรรได" : "Cross-section of terraced plot"}
+              title={locale === "th" ? "ภาพตัดขวางของแปลงขั้นบรรได (น้ำไหลซิกแซก)" : "Cross-section: zigzag water flow"}
               caption={locale === "th"
-                ? "ขั้นบรรได 1.5 ม. + คันหญ้าแฝก 0.8 ม. + ฝายชะลอน้ำ"
-                : "1.5 m terrace + 0.8 m vetiver bund + check dam"}
+                ? "น้ำถูกบังคับให้ไหลจากต้นแปลงบน → ท้ายแปลง → ลงต้นแปลงถัดไป → สลับซ้าย-ขวา (1.5 ม. terrace + 0.8 ม. vetiver bund + check dam)"
+                : "Water forced: top of upper plot → end of plot → start of next plot, alternating L↔R (1.5 m terrace + 0.8 m vetiver bund + check dam)"}
             />
             <PlotDesignImage
               src="/plots/aerial-view.png"
               title={locale === "th" ? "มุมมองจากด้านบน" : "Aerial view"}
               caption={locale === "th"
-                ? "แปลงเอียงสลับ น้ำไหลซิกแซกจากบนลงล่าง"
-                : "Alternating slopes — water zigzags top to bottom"}
+                ? "แปลงเอียงสลับ น้ำถูกบังคับให้ไหลซิกแซกจากบนลงล่าง สลับซ้าย-ขวา"
+                : "Alternating slopes — water forced to zigzag top→bottom, alternating L↔R"}
             />
             <PlotDesignImage
               src="/plots/plot-closeup.png"
