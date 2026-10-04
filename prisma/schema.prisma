@@ -1,0 +1,158 @@
+// SedimentCarbon dMRV - Prisma schema (SQLite)
+// Adapted from the PostgreSQL/PostGIS spec to SQLite + Prisma.
+// Geospatial fields (geometry) are stored as GeoJSON strings and rendered
+// on a client-side SVG map.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id        String   @id @default(cuid())
+  email     String   @unique
+  fullName  String?
+  role      String   @default("farmer") // farmer | aggregator | vvb | admin
+  locale    String   @default("th") // th | en
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  farms      Farm[]
+  samples    SoilSample[]
+  activities ManagementActivity[]
+}
+
+model Farm {
+  id            String   @id @default(cuid())
+  ownerId       String
+  groupId       String? // aggregation grouping
+  nameTh        String
+  nameEn        String?
+  geomGeojson   String // GeoJSON Polygon (WGS84)
+  areaHa        Float
+  slopePct      Float?
+  soilType      String?
+  trapTypes     String? // JSON array as string: ["contour_bund", ...]
+  projectStart  DateTime?
+  standard      String? // TVER | VCS | GOLD_STANDARD | ISO14064
+  creditingYears Int   @default(10)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  owner          User                  @relation(fields: [ownerId], references: [id])
+  plots          MonitoringPlot[]
+  samples        SoilSample[]
+  sediment       SedimentMeasurement[]
+  activities    ManagementActivity[]
+  calculations   CreditCalculation[]
+
+  @@index([ownerId])
+  @@index([groupId])
+}
+
+model MonitoringPlot {
+  id        String   @id @default(cuid())
+  farmId    String
+  plotCode  String
+  stratum   String?
+  pointGeojson String? // GeoJSON Point
+  createdAt DateTime @default(now())
+
+  farm    Farm        @relation(fields: [farmId], references: [id], onDelete: Cascade)
+  samples SoilSample[]
+
+  @@unique([farmId, plotCode])
+  @@index([farmId])
+}
+
+model SoilSample {
+  id             String   @id @default(cuid())
+  plotId         String?
+  farmId         String
+  samplerId      String?
+  sampledAt      DateTime
+  depthTopCm     Int
+  depthBotCm     Int
+  socPct         Float
+  bulkDensity    Float
+  coarseFragPct  Float    @default(0)
+  labRef         String?
+  method         String   @default("dry_combustion") // walkley_black | dry_combustion | mir_spectroscopy
+  isBaseline     Boolean  @default(false)
+  photoUrl       String?
+  gpsGeojson     String? // GeoJSON Point
+  prevHash       String?
+  recordHash     String
+  createdAt      DateTime @default(now())
+
+  farm     Farm            @relation(fields: [farmId], references: [id])
+  plot     MonitoringPlot? @relation(fields: [plotId], references: [id])
+  sampler  User?           @relation(fields: [samplerId], references: [id])
+
+  @@index([farmId])
+  @@index([plotId])
+  @@index([sampledAt])
+}
+
+model SedimentMeasurement {
+  id             String   @id @default(cuid())
+  farmId         String
+  trapId         String
+  measuredAt     DateTime
+  trapAreaM2     Float
+  deltaHcm       Float
+  sedBulkDensity Float    @default(1.3)
+  sedSocPct      Float    @default(1.2)
+  source         String   @default("manual") // manual | drone_dem | ai_photo
+  evidencePhoto  String?
+  createdAt      DateTime @default(now())
+
+  farm Farm @relation(fields: [farmId], references: [id])
+
+  @@index([farmId])
+  @@index([measuredAt])
+}
+
+model ManagementActivity {
+  id          String   @id @default(cuid())
+  farmId      String
+  activityAt  DateTime
+  activity    String // fertiliser | tillage | residue_retention | cover_crop | trap_maintenance | harvest | liming
+  nRateKgHa   Float    @default(0)
+  note        String?
+  photoUrl    String?
+  createdAt   DateTime @default(now())
+
+  farm  Farm @relation(fields: [farmId], references: [id])
+  actor User? @relation(fields: [samplerId], references: [id]) // re-uses sampler field name as actor
+  samplerId String?
+
+  @@index([farmId])
+  @@index([activityAt])
+}
+
+model CreditCalculation {
+  id              String   @id @default(cuid())
+  farmId          String
+  standard        String // TVER | VCS | GOLD_STANDARD | ISO14064
+  periodStart     DateTime
+  periodEnd       DateTime
+  deltaSoc        Float?
+  grossCo2e       Float?
+  projectEmis     Float?
+  leakage         Float?
+  uncertaintyPct  Float?
+  bufferPct       Float?
+  netCredits     Float?
+  payload         String? // full input snapshot JSON
+  calculatedAt    DateTime @default(now())
+
+  farm Farm @relation(fields: [farmId], references: [id])
+
+  @@index([farmId])
+  @@index([standard])
+}
