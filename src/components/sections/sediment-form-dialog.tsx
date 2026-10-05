@@ -41,7 +41,7 @@ export function SedimentFormDialog({
 
   const [farmId, setFarmId] = useState(defaultFarmId ?? farms[0]?.id ?? "");
   const [trapId, setTrapId] = useState("TRAP-01");
-  const [measuredAt, setMeasuredAt] = useState(new Date().toISOString().slice(0, 10));
+  const [measuredAt, setMeasuredAt] = useState("");
   const [area, setArea] = useState("4.0");
   const [deltaH, setDeltaH] = useState("10");
   const [bd, setBd] = useState("1.3");

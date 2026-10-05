@@ -60,11 +60,21 @@ export function I18nProvider({ children }: { children: React.ReactNode }) {
         month: "short",
         day: "2-digit",
       };
-      const calendar = locale === "th" ? "buddhist" : "gregory";
-      return new Intl.DateTimeFormat(locale === "th" ? "th-TH" : "en-US", {
-        ...defaultOpts,
-        calendar,
-      }).format(date);
+      // Use Gregorian calendar for both server and client (consistent SSR).
+      // For Thai locale, manually add 543 to the year to get Buddhist Era.
+      const formatted = new Intl.DateTimeFormat(
+        locale === "th" ? "th-TH" : "en-US",
+        { ...defaultOpts, calendar: "gregory" }
+      ).format(date);
+      if (locale === "th" && defaultOpts.year) {
+        // Replace the Gregorian year with Buddhist Era year (+543)
+        const beYear = date.getFullYear() + 543;
+        return formatted.replace(
+          String(date.getFullYear()),
+          String(beYear)
+        );
+      }
+      return formatted;
     },
     [locale]
   );

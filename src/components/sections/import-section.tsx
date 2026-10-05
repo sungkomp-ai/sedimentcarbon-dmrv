@@ -59,22 +59,23 @@ const SAMPLE_CSV = `nameTh,nameEn,areaHa,slopePct,elevationM,soilType,standard,p
 แปลงสาธิต B,Plot B Demo,8.0,30,1200,Volcanic soil,VCS,2022-06-01,shifting_cultivation,coffee_arabica|shade_tree,terrace_step|vetiver_bund|alternating_slope,101.05,19.18,101.06,19.19`;
 
 export function ImportSection() {
+  const { t } = useI18n();
   return (
     <div className="space-y-6">
       <SectionHeader titleKey="import.title" descriptionKey="import.desc" />
       <Tabs defaultValue="iot" className="w-full">
         <TabsList className="grid w-full grid-cols-2 sm:grid-cols-4">
           <TabsTrigger value="iot" className="gap-1.5">
-            <Radio className="h-3.5 w-3.5" /> {useI18n().t("import.tab.iot")}
+            <Radio className="h-3.5 w-3.5" /> {t("import.tab.iot")}
           </TabsTrigger>
           <TabsTrigger value="rules" className="gap-1.5">
-            <Bell className="h-3.5 w-3.5" /> {useI18n().t("import.tab.rules")}
+            <Bell className="h-3.5 w-3.5" /> {t("import.tab.rules")}
           </TabsTrigger>
           <TabsTrigger value="activities" className="gap-1.5">
-            <PlayCircle className="h-3.5 w-3.5" /> {useI18n().t("import.tab.activities")}
+            <PlayCircle className="h-3.5 w-3.5" /> {t("import.tab.activities")}
           </TabsTrigger>
           <TabsTrigger value="import" className="gap-1.5">
-            <Upload className="h-3.5 w-3.5" /> {useI18n().t("import.tab.import")}
+            <Upload className="h-3.5 w-3.5" /> {t("import.tab.import")}
           </TabsTrigger>
         </TabsList>
         <TabsContent value="iot" className="mt-4">
@@ -470,7 +471,7 @@ function ActivitiesTab() {
   // New activity form
   const [newFarmId, setNewFarmId] = useState("");
   const [newActivity, setNewActivity] = useState("cover_crop");
-  const [newDate, setNewDate] = useState(new Date().toISOString().slice(0, 10));
+  const [newDate, setNewDate] = useState("");
   const [newNote, setNewNote] = useState("");
   const [saving, setSaving] = useState(false);
 

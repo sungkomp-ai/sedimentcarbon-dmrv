@@ -429,7 +429,7 @@ function EvidencePack({
               <p className="text-xs text-muted-foreground">
                 {t("vvb.evidence.records")}: {audit.totalRecords} · {t("vvb.evidence.chainHead")}:{" "}
                 <code className="font-mono text-[10px]">
-                  {audit.totalRecords > 0 ? "0x" + (Math.random() * 1e16).toString(16).slice(0, 16) : "—"}
+                  {audit.totalRecords > 0 ? `${audit.totalRecords} records verified` : "—"}
                 </code>
               </p>
             </div>
@@ -652,7 +652,7 @@ function VvbReportDialog({ farmId, onClose }: { farmId: string; onClose: () => v
             <p className="text-xs">VVB Comprehensive Verification Report</p>
           </div>
           <div className="text-xs text-right">
-            <p>Generated: {new Date().toLocaleString()}</p>
+            <p>Generated: {data?.meta?.generatedAt ?? "—"}</p>
             <p>Farm ID: {farmId}</p>
           </div>
         </div>

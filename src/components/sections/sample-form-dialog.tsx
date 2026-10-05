@@ -58,7 +58,7 @@ export function SampleFormDialog({
 
   const [farmId, setFarmId] = useState(defaultFarmId ?? farms[0]?.id ?? "");
   const [plotCode, setPlotCode] = useState("P-01");
-  const [sampledAt, setSampledAt] = useState(new Date().toISOString().slice(0, 10));
+  const [sampledAt, setSampledAt] = useState("");
   const [depthTop, setDepthTop] = useState("0");
   const [depthBot, setDepthBot] = useState("30");
   const [socPct, setSocPct] = useState("");

@@ -514,3 +514,30 @@ Stage Summary:
   - Rotation (40 ha): 7 traps, NAN03-L01~L07-CD, area 4.3-5.45 m², depth 9-12 cm
   - Mixed (28 ha): 10 traps, NAN04-L01~L10-CD, area 3.78-5.02 m², depth 34-53 cm
 - Lint clean, dev server stable, page renders 200 OK.
+
+---
+Task ID: 14
+Agent: main
+Task: Fix hydration mismatch error — "server rendered HTML didn't match the client".
+
+Work Log:
+- Found 3 root causes of hydration mismatch:
+  1. **`Math.random()` in vvb-section.tsx** (line 432) — generating a fake "chain head" hash during render. Server and client produce different random values → mismatch.
+  2. **`calendar: "buddhist"` in i18n provider's `fmtDate`** — Node.js server doesn't support Buddhist calendar, causing it to silently fall back to Gregorian. Browser supports it. Server renders Gregorian year (2024), client renders Buddhist year (2567) → mismatch.
+  3. **`new Date()` in useState initializers** — `useState(new Date().toISOString().slice(0, 10))` in 3 dialog components (import-section, sediment-form-dialog, sample-form-dialog). Server and client compute different dates if timezones differ.
+  4. **`new Date().toLocaleString()` in vvb-section print header** — renders differently on server vs client.
+  5. **`useI18n()` called inside JSX** in import-section.tsx (lines 68, 71, 74, 77) — violating React's Rules of Hooks. Each `useI18n()` call inside JSX creates a separate hook invocation, causing inconsistent render output.
+
+- Fixes applied:
+  1. Replaced `Math.random()` hash display with deterministic text: `${audit.totalRecords} records verified`.
+  2. Replaced `calendar: "buddhist"` with `calendar: "gregory"` + manual year adjustment (+543 for Thai). This produces the same Buddhist Era year on both server and client without relying on ICU calendar support.
+  3. Replaced all `useState(new Date().toISOString().slice(0, 10))` with `useState("")` — the date is set later via user input or API response, not during initialization.
+  4. Replaced `new Date().toLocaleString()` in print header with `data?.meta?.generatedAt ?? "—"` (from API response, consistent server/client).
+  5. Moved `useI18n()` call from inside JSX to the top of `ImportSection` component: `const { t } = useI18n();` then used `t("import.tab.iot")` etc. in JSX.
+
+Stage Summary:
+- All hydration errors eliminated — verified via Agent Browser with fresh browser session:
+  - No errors in `agent-browser errors` output.
+  - No hydration/mismatch messages in console.
+  - All 9 sections (Dashboard, Farms, Samples, Sediment, Calculator, Standards, Audit, VVB, Import+IoT, Guide) navigate cleanly without errors.
+- Lint clean, dev server stable, page renders 200 OK.
