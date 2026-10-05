@@ -654,3 +654,23 @@ Stage Summary:
   - Without (all 150k): NPV -10,900 THB, IRR 5.59%, total cost 800,000 THB
   - dMRV saves 150,000 THB (2 subsequent cycles × 75k) → project turns viable!
 - Lint clean, dev server stable, all fields verified in browser.
+
+---
+Task ID: 18
+Agent: main
+Task: Fix recurring hydration mismatch error — replaced all Intl-based formatting with manual formatting.
+
+Work Log:
+- Root cause: `Intl.DateTimeFormat("th-TH", ...)` and `Intl.NumberFormat("th-TH", ...)` can produce different output on Node.js server vs browser (different ICU versions, different month name abbreviations, different digit grouping).
+- Previous fix (Task 14) changed `calendar: "buddhist"` to `calendar: "gregory"` + manual +543 year — but still used `Intl.DateTimeFormat("th-TH")` for month names, which can differ.
+- This fix eliminates ALL Intl dependency from the render path:
+  1. **fmtDate**: Replaced `Intl.DateTimeFormat("th-TH", {calendar:"gregory"})` with manual formatting using hardcoded Thai month abbreviations array (`TH_MONTHS_SHORT`) + English months (`EN_MONTHS_SHORT`). Format: `DD {month} {BE_year}`. Identical on server and client.
+  2. **fmt**: Replaced `Intl.NumberFormat("th-TH")` with manual `formatNumber()` using `toFixed()` + regex comma insertion. Identical on server and client.
+  3. **fmtArea**: Replaced `Intl.NumberFormat("th-TH")` in area.ts with same manual `toFixed()` + comma insertion.
+
+Stage Summary:
+- Zero Intl calls in the render path — all date/number formatting is manual and deterministic.
+- Verified via Agent Browser: fresh session, all 10 sections navigated, no hydration errors, no console errors.
+- Date formatting verified: "01 ธ.ค. 2567" (Buddhist Era) shows correctly in sediment table + dashboard activity feed.
+- Number formatting verified: "312.50", "40,940", "6,882" all display correctly.
+- Lint clean, dev server stable.

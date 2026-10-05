@@ -44,37 +44,47 @@ export function I18nProvider({ children }: { children: React.ReactNode }) {
     [locale]
   );
 
+  // Manual number formatting — identical on server and client (no Intl.NumberFormat)
+  function formatNumber(n: number, opts?: { maximumFractionDigits?: number; minimumFractionDigits?: number }): string {
+    const minDigits = opts?.minimumFractionDigits ?? 0;
+    const maxDigits = opts?.maximumFractionDigits ?? 3;
+    const fixed = n.toFixed(Math.max(minDigits, maxDigits));
+    const [intPart, decPart] = fixed.split(".");
+    const withCommas = intPart.replace(/\B(?=(\d{3})+(?!\d))/g, ",");
+    return decPart ? `${withCommas}.${decPart}` : withCommas;
+  }
+
   const fmt = useCallback(
     (n: number, opts?: Intl.NumberFormatOptions) =>
-      new Intl.NumberFormat(locale === "th" ? "th-TH" : "en-US", opts).format(n),
+      formatNumber(n, {
+        maximumFractionDigits: opts?.maximumFractionDigits,
+        minimumFractionDigits: opts?.minimumFractionDigits,
+      }),
     [locale]
   );
 
+  // Thai month abbreviations (identical on server and client — no Intl dependency)
+  const TH_MONTHS_SHORT = [
+    "\u0e21\.\u0e04\.", "\u0e01\.\u0e1e\.", "\u0e21\.\u0e35\.\u0e04\.", "\u0e40\.\u0e21\.\u0e22\.",
+    "\u0e1e\.\u0e05\.", "\u0e21\.\u0e34\.\u0e22\.", "\u0e01\.\u0e04\.", "\u0e2a\.\u0e04\.",
+    "\u0e01\.\u0e22\.", "\u0e15\.\u0e04\.", "\u0e1e\.\u0e22\.", "\u0e18\.\u0e04\."
+  ];
+  const EN_MONTHS_SHORT = [
+    "Jan", "Feb", "Mar", "Apr", "May", "Jun",
+    "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"
+  ];
+
   const fmtDate = useCallback(
-    (d: Date | string | null, opts?: Intl.DateTimeFormatOptions) => {
-      if (!d) return "—";
+    (d: Date | string | null, _opts?: Intl.DateTimeFormatOptions) => {
+      if (!d) return "\u2014";
       const date = typeof d === "string" ? new Date(d) : d;
-      if (Number.isNaN(date.getTime())) return "—";
-      const defaultOpts: Intl.DateTimeFormatOptions = opts ?? {
-        year: "numeric",
-        month: "short",
-        day: "2-digit",
-      };
-      // Use Gregorian calendar for both server and client (consistent SSR).
-      // For Thai locale, manually add 543 to the year to get Buddhist Era.
-      const formatted = new Intl.DateTimeFormat(
-        locale === "th" ? "th-TH" : "en-US",
-        { ...defaultOpts, calendar: "gregory" }
-      ).format(date);
-      if (locale === "th" && defaultOpts.year) {
-        // Replace the Gregorian year with Buddhist Era year (+543)
-        const beYear = date.getFullYear() + 543;
-        return formatted.replace(
-          String(date.getFullYear()),
-          String(beYear)
-        );
-      }
-      return formatted;
+      if (Number.isNaN(date.getTime())) return "\u2014";
+      // Manual formatting — identical output on Node.js server and browser
+      const day = String(date.getDate()).padStart(2, "0");
+      const monthIdx = date.getMonth();
+      const year = locale === "th" ? date.getFullYear() + 543 : date.getFullYear();
+      const month = locale === "th" ? TH_MONTHS_SHORT[monthIdx] : EN_MONTHS_SHORT[monthIdx];
+      return `${day} ${month} ${year}`;
     },
     [locale]
   );

@@ -38,10 +38,10 @@ export function fmtArea(
   const withUnit = opts?.withUnit ?? true;
   if (locale === "th") {
     const rai = haToRai(ha);
-    const num = new Intl.NumberFormat("th-TH", {
-      minimumFractionDigits: digits,
-      maximumFractionDigits: digits,
-    }).format(rai);
+    const fixed = rai.toFixed(digits);
+    const [intPart, decPart] = fixed.split(".");
+    const withCommas = intPart.replace(/\B(?=(\d{3})+(?!\d))/g, ",");
+    const num = decPart ? `${withCommas}.${decPart}` : withCommas;
     return withUnit ? `${num} ไร่` : num;
   }
   const num = new Intl.NumberFormat("en-US", {
