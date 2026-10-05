@@ -363,3 +363,38 @@ Stage Summary:
 - Per-trap depths remain realistic (5-43 cm), scaling with slope and erosion.
 - Sample captured in monitoring traps (small): 36.27 m³ = 47 t — clearly labeled as verification sample.
 - Lint clean, dev server stable, page renders 200 OK.
+
+---
+Task ID: 10
+Agent: main
+Task: Add biochar option to the credit calculator + management activities for permanent carbon storage boost.
+
+Work Log:
+- Extended `src/lib/core/credits.ts` with biochar calculation:
+  - Added 3 new optional fields to `CreditInput`: `biocharRateTPerHa`, `biocharCarbonPct` (default 70), `biocharStabilityFactor` (default 0.8).
+  - Added 3 new fields to `CreditResult`: `biocharCo2eT`, `biocharCStockT`, `socGrossCo2eT`.
+  - Exported new `computeBiocharCredits()` helper: C_persistent = rate × area × C_pct × BC+100, CO2e = C × 44/12 (per VCS Biochar Methodology + IPCC 2019 Refinement).
+  - In `computeForRule()`: gross = socGross + biochar.co2eT — biochar adds to total credits before emissions/leakage/buffer/uncertainty deductions.
+- Updated `/api/calculate/credits` route — automatically picks up the new fields via the CreditInput type.
+- Updated `/api/dashboard/route.ts` — checks for `biochar_application` activity on the first farm and passes biocharRateTPerHa + carbonPct + stability to `compareAllStandards()` so the dashboard creditComparison reflects the biochar bonus when present.
+- Updated Prisma schema comment for `ManagementActivity.activity` to include `biochar_application`.
+- Added 25 new bilingual translations for biochar: title, enable toggle, full description (TH/EN), rate/source/carbonPct/stability inputs, stability hint, preview labels (C/ha, CO2e/ha, total), feedstock options (rice husk, wood, corn cob, manure).
+- Updated `calculator-section.tsx` CreditsTab:
+  - Added biochar state: `biocharEnabled`, `biocharRate`, `biocharCarbonPct`, `biocharStability`, `biocharSource`.
+  - Built amber-themed biochar panel below the SOC sample field, with toggle switch + 4 inputs (rate, source, carbon%, stability).
+  - Live preview box (gradient amber→emerald) showing C/ha, CO2e/ha, and total biochar CO2e based on current area.
+  - Passes biochar fields to API when computing.
+  - Updated result table: conditionally shows a new "Biochar" column (with Flame icon + amber text) when any standard's `biocharCo2eT > 0`. The cell shows `+32.853` (added) or `—` (none).
+- Updated `seed.ts` to add a `biochar_application` activity to Nan-4 (Mixed Tea & Coffee — steepest slope, full design): applied 12.5 t/ha biochar from rice husk, with note "ใส่ biochar จากแกลบข้าว อัตรา 12.5 t/ha (C 70%, BC+100 = 0.80)".
+
+Stage Summary:
+- Biochar option now available in the Credits tab of the Calculator:
+  - Toggle switch (default OFF) — when ON, shows 4 inputs + live preview.
+  - Default: 2 t/rai (= 12.5 t/ha), 70% C, 0.80 BC+100 stability.
+  - For 50 ha farm (312.5 rai): adds 32.853 tCO₂e to total credits.
+- Verified end-to-end via Agent Browser (TH mode):
+  - Switch ON: live preview shows "C ถาวร/ไร่ 0.179 t C", "CO₂e/ไร่ 0.657 tCO₂e", "CO₂e รวมจาก biochar 32.9 tCO₂e".
+  - Compute with biochar ON: result table shows new "Biochar" column with `+32.853` for all 4 standards.
+  - T-VER net = 678.993 tCO₂e (up from 649.425 without biochar — gain of 29.568 tCO₂e after 10% buffer deduction).
+  - Switch OFF: biochar column disappears, credits return to original values.
+- Lint clean, dev server stable, page renders 200 OK.

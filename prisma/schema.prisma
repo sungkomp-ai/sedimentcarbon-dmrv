@@ -126,7 +126,7 @@ model ManagementActivity {
   id          String   @id @default(cuid())
   farmId      String
   activityAt  DateTime
-  activity    String // fertiliser | tillage | residue_retention | cover_crop | trap_maintenance | harvest | liming
+  activity    String // fertiliser | tillage | residue_retention | cover_crop | trap_maintenance | harvest | liming | biochar_application
   nRateKgHa   Float    @default(0)
   note        String?
   photoUrl    String?

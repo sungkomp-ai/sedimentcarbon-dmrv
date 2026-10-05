@@ -32,9 +32,10 @@ import {
   Sparkles,
   ArrowUpRight,
   ArrowDownRight,
+  Flame,
 } from "lucide-react";
 import { STANDARD_LIST } from "@/lib/core/standards";
-import type { CreditResult } from "@/lib/core/credits";
+import { type CreditResult, computeBiocharCredits } from "@/lib/core/credits";
 import type { FinanceResult } from "@/lib/core/finance";
 import {
   Bar,
@@ -114,17 +115,30 @@ function CreditsTab() {
   const [diesel, setDiesel] = useState("0");
   const [leakage, setLeakage] = useState("15");
   const [samples, setSamples] = useState("31.8, 33.2, 32.0, 34.1, 31.5");
+  // Biochar state
+  const [biocharEnabled, setBiocharEnabled] = useState(false);
+  // Biochar rate in locale unit (rai for TH, ha for EN). Default 2 t/rai = 12.5 t/ha.
+  const [biocharRate, setBiocharRate] = useState(isThai ? "2" : "12.5");
+  const [biocharCarbonPct, setBiocharCarbonPct] = useState("70");
+  const [biocharStability, setBiocharStability] = useState("0.8");
+  const [biocharSource, setBiocharSource] = useState<"riceHusk" | "wood" | "cornCob" | "manure">("riceHusk");
   const [comparison, setComparison] = useState<CreditResult[] | null>(null);
   const [loading, setLoading] = useState(false);
 
   async function compute() {
     setLoading(true);
     try {
+      const areaHa = isThai ? raiToHa(Number(area)) : Number(area);
+      const biocharRateTPerHa = biocharEnabled
+        ? isThai
+          ? raiToHa(Number(biocharRate))
+          : Number(biocharRate)
+        : 0;
       const body = {
         socBaselineTHa: Number(baseline),
         socCurrentTHa: Number(current),
         years: Number(years),
-        areaHa: isThai ? raiToHa(Number(area)) : Number(area),
+        areaHa,
         nFertiliserKgHaYr: Number(fertiliser) || 0,
         floodedDaysYr: Number(flooded) || 0,
         dieselLitreTotal: Number(diesel) || 0,
@@ -133,6 +147,10 @@ function CreditsTab() {
           .split(/[,\s]+/)
           .map((s) => Number(s))
           .filter((n) => !Number.isNaN(n) && n > 0),
+        // Biochar inputs (only when enabled)
+        biocharRateTPerHa,
+        biocharCarbonPct: Number(biocharCarbonPct) || 70,
+        biocharStabilityFactor: Number(biocharStability) || 0.8,
       };
       const res = await fetch("/api/calculate/credits", {
         method: "POST",
@@ -152,6 +170,29 @@ function CreditsTab() {
       setLoading(false);
     }
   }
+
+  // Live biochar preview
+  const areaHa = isThai ? raiToHa(Number(area)) : Number(area);
+  const biocharRateTPerHa = biocharEnabled
+    ? isThai
+      ? raiToHa(Number(biocharRate))
+      : Number(biocharRate)
+    : 0;
+  const biocharPreview = biocharEnabled && biocharRateTPerHa > 0
+    ? computeBiocharCredits({
+        areaHa,
+        rateTPerHa: biocharRateTPerHa,
+        carbonPct: Number(biocharCarbonPct) || 70,
+        stabilityFactor: Number(biocharStability) || 0.8,
+      })
+    : { cStockT: 0, co2eT: 0 };
+  // Per-area preview (for the live preview card)
+  const biocharPreviewPerHa = computeBiocharCredits({
+    areaHa: 1,
+    rateTPerHa: biocharRateTPerHa,
+    carbonPct: Number(biocharCarbonPct) || 70,
+    stabilityFactor: Number(biocharStability) || 0.8,
+  });
 
   return (
     <div className="grid gap-4 lg:grid-cols-5">
@@ -174,6 +215,84 @@ function CreditsTab() {
             <Label>{t("calc.credits.samples")}</Label>
             <Input value={samples} onChange={(e) => setSamples(e.target.value)} className="font-mono text-xs" />
           </div>
+
+          {/* Biochar panel */}
+          <div className="rounded-md border border-amber-300 dark:border-amber-800 bg-amber-50/40 dark:bg-amber-950/20 p-3 space-y-3">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <Flame className="h-4 w-4 text-amber-600 dark:text-amber-400" />
+                <span className="text-sm font-medium">{t("calc.biochar.title")}</span>
+              </div>
+              <label className="flex items-center gap-1.5 cursor-pointer">
+                <span className="text-xs text-muted-foreground">{t("calc.biochar.enable")}</span>
+                <Switch checked={biocharEnabled} onCheckedChange={setBiocharEnabled} aria-label={t("calc.biochar.enable")} />
+              </label>
+            </div>
+
+            <div className={biocharEnabled ? "space-y-3" : "space-y-3 opacity-50 pointer-events-none"}>
+              <div className="grid grid-cols-2 gap-2">
+                <Field
+                  label={isThai ? t("calc.biochar.rate") : t("calc.biochar.rateHa")}
+                  value={biocharRate}
+                  onChange={setBiocharRate}
+                />
+                <div className="space-y-1.5">
+                  <Label className="text-xs">{t("calc.biochar.source")}</Label>
+                  <select
+                    value={biocharSource}
+                    onChange={(e) => setBiocharSource(e.target.value as typeof biocharSource)}
+                    className="flex h-9 w-full rounded-md border border-input bg-background px-3 py-2 text-sm shadow-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+                  >
+                    <option value="riceHusk">{t("calc.biochar.riceHusk")}</option>
+                    <option value="wood">{t("calc.biochar.wood")}</option>
+                    <option value="cornCob">{t("calc.biochar.cornCob")}</option>
+                    <option value="manure">{t("calc.biochar.manure")}</option>
+                  </select>
+                </div>
+                <Field
+                  label={t("calc.biochar.carbonPct")}
+                  value={biocharCarbonPct}
+                  onChange={setBiocharCarbonPct}
+                />
+                <Field
+                  label={t("calc.biochar.stability")}
+                  value={biocharStability}
+                  onChange={setBiocharStability}
+                />
+              </div>
+              <p className="text-[10px] text-muted-foreground leading-relaxed">
+                {t("calc.biochar.stabilityHint")}
+              </p>
+
+              {/* Live biochar preview */}
+              {biocharEnabled && biocharPreview.co2eT > 0 && (
+                <div className="rounded-md bg-gradient-to-br from-amber-50 to-emerald-50 dark:from-amber-950/30 dark:to-emerald-950/30 p-2.5 grid grid-cols-2 gap-2 text-xs">
+                  <div>
+                    <div className="text-muted-foreground">{isThai ? t("calc.biochar.cPerHa") : "C/ha"}</div>
+                    <div className="font-semibold tabular-nums text-emerald-600 dark:text-emerald-400">
+                      {fmt(biocharPreviewPerHa.cStockT, { maximumFractionDigits: 3 })} t C
+                    </div>
+                  </div>
+                  <div>
+                    <div className="text-muted-foreground">{isThai ? t("calc.biochar.co2ePerHa") : "CO₂e/ha"}</div>
+                    <div className="font-semibold tabular-nums text-amber-600 dark:text-amber-400">
+                      {fmt(biocharPreviewPerHa.co2eT, { maximumFractionDigits: 3 })} tCO₂e
+                    </div>
+                  </div>
+                  <div className="col-span-2 border-t pt-1.5">
+                    <div className="text-muted-foreground">{t("calc.biochar.totalCo2e")}</div>
+                    <div className="font-bold tabular-nums text-base text-amber-700 dark:text-amber-300">
+                      {fmt(biocharPreview.co2eT, { maximumFractionDigits: 1 })} tCO₂e
+                    </div>
+                    <div className="text-[10px] text-muted-foreground">
+                      {fmt(biocharPreview.cStockT, { maximumFractionDigits: 1 })} t C × 44/12
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+
           <Button onClick={compute} disabled={loading} className="w-full gap-2">
             <CalcIcon className="h-4 w-4" /> {loading ? t("common.loading") : t("calc.credits.compare")}
           </Button>
@@ -219,6 +338,12 @@ function CreditsTab() {
                       <TableHead>{t("standards.code")}</TableHead>
                       <TableHead className="text-right">ΔSOC</TableHead>
                       <TableHead className="text-right">{t("credit.gross")}</TableHead>
+                      {comparison.some((r) => r.biocharCo2eT > 0) && (
+                        <TableHead className="text-right text-amber-700 dark:text-amber-300">
+                          <Flame className="inline h-3 w-3 mr-1" />
+                          {isThai ? "Biochar" : "Biochar"}
+                        </TableHead>
+                      )}
                       <TableHead className="text-right">Emissions</TableHead>
                       <TableHead className="text-right">Buffer</TableHead>
                       <TableHead className="text-right">{t("credit.net")}</TableHead>
@@ -228,6 +353,7 @@ function CreditsTab() {
                   <TableBody>
                     {comparison.map((r) => {
                       const rule = STANDARD_LIST.find((s) => s.code === r.standard);
+                      const hasBiochar = comparison.some((x) => x.biocharCo2eT > 0);
                       return (
                         <TableRow key={r.standard}>
                           <TableCell>
@@ -245,6 +371,11 @@ function CreditsTab() {
                           <TableCell className="text-right tabular-nums">
                             {fmt(r.grossCo2e)}
                           </TableCell>
+                          {hasBiochar && (
+                            <TableCell className="text-right tabular-nums text-amber-700 dark:text-amber-300">
+                              {r.biocharCo2eT > 0 ? `+${fmt(r.biocharCo2eT)}` : "—"}
+                            </TableCell>
+                          )}
                           <TableCell className="text-right tabular-nums text-red-600 dark:text-red-400">
                             -{fmt(r.projectEmissionsCo2e)}
                           </TableCell>

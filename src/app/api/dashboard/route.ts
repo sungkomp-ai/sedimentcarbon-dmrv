@@ -74,6 +74,14 @@ export async function GET() {
     const farmSamples = samples.filter((s) => s.farmId === firstFarm.id);
     const baseline = farmSamples.filter((s) => s.isBaseline).map((s) => s.socPct);
     const current = farmSamples.filter((s) => !s.isBaseline).map((s) => s.socPct);
+    // Check if this farm has a biochar application activity
+    const farmActivities = activities.filter((a) => a.farmId === firstFarm.id);
+    const biocharActivity = farmActivities.find(
+      (a) => a.activity === "biochar_application"
+    );
+    const biocharRateTPerHa = biocharActivity?.nRateKgHa
+      ? biocharActivity.nRateKgHa / 1000
+      : 0;
     if (baseline.length > 0 && current.length > 0) {
       // SOC stock at 0-30cm, BD ~1.34, CF ~5% — derive a quick per-ha value.
       const bd = farmSamples[0]?.bulkDensity ?? 1.34;
@@ -90,6 +98,10 @@ export async function GET() {
         years: Math.max(1, Number(years.toFixed(2))),
         areaHa: firstFarm.areaHa,
         socSamples: farmSamples.map((s) => s.socPct),
+        // Pass biochar inputs if the farm has a biochar_application activity
+        biocharRateTPerHa: biocharRateTPerHa > 0 ? biocharRateTPerHa : undefined,
+        biocharCarbonPct: 70,
+        biocharStabilityFactor: 0.8,
       };
       comparison = compareAllStandards(input);
     }

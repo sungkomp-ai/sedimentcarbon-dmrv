@@ -255,6 +255,7 @@ const FARMS: SeedFarm[] = [
     activities: [
       { date: "2024-02-15", activity: "cover_crop", nRate: 0, note: "ปลูกพืชคลุมดินระหว่างแถวชา-กาแฟ" },
       { date: "2024-04-10", activity: "trap_maintenance", nRate: 0, note: "ซ่อมแซมคันหญ้าแฝกและฝายชะลอน้ำ" },
+      { date: "2024-05-20", activity: "biochar_application", nRate: 12500, note: "ใส่ biochar จากแกลบข้าว อัตรา 12.5 t/ha (C 70%, BC+100 = 0.80)" },
       { date: "2024-07-01", activity: "harvest", nRate: 0, note: "เก็บใบชาและผลกาแฟ" },
       { date: "2024-10-15", activity: "residue_retention", nRate: 0, note: "ทิ้งใบชา-กาแฟแก่คลุมดิน" },
       { date: "2024-12-20", activity: "fertiliser", nRate: 15, note: "ปุ๋ยคอกชาอัตรา 30 kg/ha" },
