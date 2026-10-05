@@ -11,6 +11,11 @@ export interface FinanceInput {
   pricePerTco2e?: number;
   capexPerHa?: number;
   opexPerHaYr?: number;
+  /** Verification cost for the FIRST cycle (year 1 or first verificationEveryYr). */
+  verificationCostYear1?: number;
+  /** Verification cost for SUBSEQUENT cycles (reduced by dMRV benefit). */
+  verificationCostSubsequent?: number;
+  /** @deprecated — use verificationCostYear1 + verificationCostSubsequent instead. */
   verificationCost?: number;
   verificationEveryYr?: number;
   platformFeePct?: number;
@@ -50,7 +55,9 @@ export function projectCashflow(input: FinanceInput): FinanceResult {
     pricePerTco2e = 350,
     capexPerHa = 4500,
     opexPerHaYr = 800,
-    verificationCost = 150000,
+    verificationCostYear1,
+    verificationCostSubsequent,
+    verificationCost,
     verificationEveryYr = 3,
     platformFeePct = 0.1,
     years = 10,
@@ -60,9 +67,16 @@ export function projectCashflow(input: FinanceInput): FinanceResult {
     registrationCost = 0,
   } = input;
 
+  // Resolve verification costs: prefer Year1/Subsequent split, fall back to
+  // single verificationCost for backward compatibility.
+  const costYear1 = verificationCostYear1 ?? verificationCost ?? 150000;
+  const costSubsequent = verificationCostSubsequent ?? verificationCost ?? 150000;
+
   const capex = capexPerHa * areaHa + registrationCost;
   const flows: number[] = [-capex];
   const rows: CashflowRow[] = [];
+
+  let verificationCycleCount = 0;
 
   for (let y = 1; y <= years; y++) {
     const price = pricePerTco2e * (1 + priceEscalation) ** (y - 1);
@@ -71,7 +85,10 @@ export function projectCashflow(input: FinanceInput): FinanceResult {
     const revenue = carbonRev + cobenefit;
     let cost = opexPerHaYr * areaHa;
     if (verificationEveryYr && y % verificationEveryYr === 0) {
-      cost += verificationCost;
+      // First verification cycle uses costYear1 (full cost, no dMRV benefit yet).
+      // Subsequent cycles use costSubsequent (reduced by dMRV benefit).
+      cost += verificationCycleCount === 0 ? costYear1 : costSubsequent;
+      verificationCycleCount++;
     }
     const net = revenue - cost;
     flows.push(net);

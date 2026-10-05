@@ -622,3 +622,35 @@ Stage Summary:
   - Import+IoT → IoT readings link to farms + rules fire activities
   - Guide → shows actual system statistics (farms/area/samples/sediment/credits)
 - Lint clean, dev server stable, page renders 200 OK, all sections verified via Agent Browser.
+
+---
+Task ID: 16
+Agent: main
+Task: Allow separate verification costs for Year 1 (Validation) vs subsequent years (Verification) — dMRV reduces cost over time.
+
+Work Log:
+- Updated `src/lib/core/finance.ts` FinanceInput interface:
+  - Added `verificationCostYear1` (first cycle, full cost)
+  - Added `verificationCostSubsequent` (subsequent cycles, dMRV-reduced)
+  - Kept `verificationCost` as deprecated fallback for backward compat.
+- Updated `projectCashflow()`:
+  - First verification cycle (y == verificationEveryYr) uses `costYear1`
+  - Subsequent cycles use `costSubsequent`
+  - `verificationCycleCount` tracks which cycle we're in.
+- Updated FinanceTab UI in calculator-section.tsx:
+  - Replaced single `verifyCost` field with two fields: `verifyCostY1` (150,000) + `verifyCostSub` (75,000)
+  - dMRV reduction slider now auto-computes `adjCostSub = min(userInput, costY1 × (1 - reduction%))`
+  - Baseline (no dMRV) uses costY1 for ALL cycles; adjusted uses costY1 for cycle 1 + adjCostSub for cycles 2+
+  - Preview box shows "ค่าตรวจปีแรก (Validation)" = 150,000 (amber, "ยังไม่มีข้อมูล dMRV → ตรวจเต็มรอบ") + "ค่าตรวจปีถัดไป (Verification)" = 75,000 (emerald, with strikethrough on 150,000)
+  - Cumulative benefit: "2 รอบถัดไป × 75,000" = 150,000 THB saved (not 3 cycles × save)
+- Added translation keys: calc.fin.verifyCostY1 + calc.fin.verifyCostSub (TH + EN)
+- API route passes through automatically (FinanceInput type handles new fields).
+
+Stage Summary:
+- Year 1 (Validation): 150,000 THB — full cost, no dMRV benefit (system just starting)
+- Subsequent (Verification): 75,000 THB — 50% reduction from dMRV data
+- Financial impact (28 ha, 10 yr, verify every 3 yr):
+  - With split costs: NPV +73,882 THB, IRR 18.85%, total cost 650,000 THB
+  - Without (all 150k): NPV -10,900 THB, IRR 5.59%, total cost 800,000 THB
+  - dMRV saves 150,000 THB (2 subsequent cycles × 75k) → project turns viable!
+- Lint clean, dev server stable, all fields verified in browser.

@@ -761,7 +761,9 @@ function FinanceTab() {
   const [price, setPrice] = useState("350");
   const [capex, setCapex] = useState("4500");
   const [opex, setOpex] = useState("800");
-  const [verifyCost, setVerifyCost] = useState("150000");
+  // Two separate verification costs: Year 1 (full) vs subsequent (dMRV-reduced)
+  const [verifyCostY1, setVerifyCostY1] = useState("150000");
+  const [verifyCostSub, setVerifyCostSub] = useState("75000"); // already reduced by dMRV
   const [verifyEvery, setVerifyEvery] = useState("3");
   const [years, setYears] = useState("10");
   const [discount, setDiscount] = useState("8");
@@ -778,39 +780,47 @@ function FinanceTab() {
   const [loading, setLoading] = useState(false);
 
   // Live-compute the adjusted values for the preview block
-  const baseVerify = Number(verifyCost) || 0;
+  const costY1 = Number(verifyCostY1) || 0;
   const basePrice = Number(price) || 0;
   const reductionPct = Number(dmrvReduction) || 0;
   const premiumPct = Number(dmrvPremium) || 0;
-  const adjVerify = dmrvEnabled ? baseVerify * (1 - reductionPct / 100) : baseVerify;
+  // Subsequent cost: user can enter directly, or dMRV auto-reduces from Year 1 cost
+  const costSubUserInput = Number(verifyCostSub) || 0;
+  const costSubDmrvAdjusted = dmrvEnabled ? costY1 * (1 - reductionPct / 100) : costY1;
+  // Use whichever is lower: user's direct input or dMRV-adjusted from Y1
+  const adjCostSub = Math.min(costSubUserInput || Infinity, costSubDmrvAdjusted);
   const adjPrice = dmrvEnabled ? basePrice * (1 + premiumPct / 100) : basePrice;
-  const verifySave = baseVerify - adjVerify;
+  const verifySave = costY1 - adjCostSub;
   const priceAdd = adjPrice - basePrice;
 
   const verifyCycles = Math.max(1, Math.floor(Number(years) / Math.max(1, Number(verifyEvery))));
-  const totalVerifySave = verifySave * verifyCycles;
+  const subsequentCycles = Math.max(0, verifyCycles - 1); // first cycle is Year 1 cost
+  const totalVerifySave = verifySave * subsequentCycles;
   const totalPremiumRev = priceAdd * Number(annualCredits) * Number(years);
 
   async function compute() {
     setLoading(true);
     try {
       const areaHa = isThai ? raiToHa(Number(area)) : Number(area);
+      // Baseline (no dMRV): both cycles use the full Year 1 cost
       const baseBody = {
         areaHa,
         annualCreditsTco2e: Number(annualCredits),
         pricePerTco2e: basePrice,
         capexPerHa: Number(capex),
         opexPerHaYr: Number(opex),
-        verificationCost: baseVerify,
+        verificationCostYear1: costY1,
+        verificationCostSubsequent: costY1, // baseline: same cost for all cycles
         verificationEveryYr: Number(verifyEvery),
         years: Number(years),
         discountRate: Number(discount) / 100,
         cobenefitThbHaYr: Number(cobenefit),
       };
+      // Adjusted (with dMRV): Year 1 stays full, subsequent cycles are reduced
       const adjustedBody = {
         ...baseBody,
         pricePerTco2e: adjPrice,
-        verificationCost: adjVerify,
+        verificationCostSubsequent: adjCostSub, // reduced cost for cycles 2+
       };
       // Run both: baseline (no dMRV) and adjusted (with dMRV)
       const [baseRes, adjRes] = await Promise.all([
@@ -859,7 +869,8 @@ function FinanceTab() {
               <Field label={t("calc.fin.price")} value={price} onChange={setPrice} />
               <Field label={t("calc.fin.capex")} value={capex} onChange={setCapex} />
               <Field label={t("calc.fin.opex")} value={opex} onChange={setOpex} />
-              <Field label={t("calc.fin.verifyCost")} value={verifyCost} onChange={setVerifyCost} />
+              <Field label={t("calc.fin.verifyCostY1")} value={verifyCostY1} onChange={setVerifyCostY1} />
+              <Field label={t("calc.fin.verifyCostSub")} value={verifyCostSub} onChange={setVerifyCostSub} />
               <Field label={t("calc.fin.verifyEvery")} value={verifyEvery} onChange={setVerifyEvery} />
               <Field label={t("calc.fin.years")} value={years} onChange={setYears} />
               <Field label={t("calc.fin.discount")} value={discount} onChange={setDiscount} />
@@ -932,17 +943,27 @@ function FinanceTab() {
               </div>
             </div>
 
-            {/* Live preview of base → adjusted */}
+            {/* Live preview: Year 1 vs subsequent verification costs */}
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-              {/* Verification cost row */}
-              <div className="rounded-md border bg-muted/30 p-3 space-y-1">
-                <div className="text-xs text-muted-foreground">{t("calc.fin.dmrvBaseVerify")}</div>
-                <div className="text-sm font-medium tabular-nums line-through text-muted-foreground">
-                  {fmt(baseVerify)} {t("unit.thb")}
+              {/* Year 1 verification cost (full, no dMRV) */}
+              <div className="rounded-md border bg-amber-50/40 dark:bg-amber-950/20 p-3 space-y-1">
+                <div className="text-xs text-muted-foreground">{isThai ? "ค่าตรวจปีแรก (Validation)" : "Year 1 cost (Validation)"}</div>
+                <div className="text-lg font-semibold tabular-nums">
+                  {fmt(costY1)} {t("unit.thb")}
                 </div>
-                <div className="text-xs text-muted-foreground">{t("calc.fin.dmrvAdjVerify")}</div>
+                <div className="text-xs text-muted-foreground">
+                  {isThai ? "ยังไม่มีข้อมูล dMRV → ตรวจเต็มรอบ" : "No dMRV data yet → full verification"}
+                </div>
+              </div>
+
+              {/* Subsequent verification cost (dMRV-reduced) */}
+              <div className="rounded-md border bg-emerald-50/40 dark:bg-emerald-950/20 p-3 space-y-1">
+                <div className="text-xs text-muted-foreground">{isThai ? "ค่าตรวจปีถัดไป (Verification)" : "Subsequent cost (Verification)"}</div>
+                <div className="text-sm font-medium tabular-nums line-through text-muted-foreground">
+                  {fmt(costY1)} {t("unit.thb")}
+                </div>
                 <div className="text-lg font-semibold tabular-nums text-emerald-600 dark:text-emerald-400">
-                  {fmt(adjVerify)} {t("unit.thb")}
+                  {fmt(adjCostSub)} {t("unit.thb")}
                 </div>
                 <div className="text-xs text-emerald-600 dark:text-emerald-400">
                   {t("calc.fin.dmrvSave")}: {fmt(verifySave)} {t("unit.thb")}
@@ -977,7 +998,7 @@ function FinanceTab() {
                   <div className="font-semibold tabular-nums text-emerald-600 dark:text-emerald-400">
                     {fmt(totalVerifySave)} {t("unit.thb")}
                   </div>
-                  <div className="text-[10px] text-muted-foreground">{verifyCycles} cycles × {fmt(verifySave)}</div>
+                  <div className="text-[10px] text-muted-foreground">{subsequentCycles} {isThai ? "รอบถัดไป" : "subsequent cycles"} × {fmt(verifySave)}</div>
                 </div>
                 <div>
                   <div className="text-muted-foreground">{t("calc.fin.dmrvPremiumRevenueTotal")}</div>
