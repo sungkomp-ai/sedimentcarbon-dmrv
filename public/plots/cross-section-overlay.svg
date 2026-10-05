@@ -1,0 +1,120 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1344 768" width="1344" height="768" font-family="'Segoe UI', Tahoma, sans-serif">
+  <!--
+    Transparent overlay for the cross-section photo.
+    Only contains the zigzag water-flow arrows + numbered labels.
+    Place on top of cross-section-photo.png in the dashboard.
+
+    Flow pattern (alternating L↔R):
+      Plot 1 (top)    : LEFT → RIGHT
+      Plot 2          : RIGHT → LEFT
+      Plot 3          : LEFT → RIGHT
+      Plot 4 (bottom) : RIGHT → LEFT
+  -->
+  <defs>
+    <marker id="arrowheadOverlay" viewBox="0 0 12 12" refX="11" refY="6" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M 0 0 L 12 6 L 0 12 z" fill="#1d4ed8" stroke="white" stroke-width="1.5"/>
+    </marker>
+    <marker id="arrowheadDownOverlay" viewBox="0 0 12 12" refX="6" refY="11" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M 0 0 L 6 12 L 12 0 z" fill="#1d4ed8" stroke="white" stroke-width="1.5"/>
+    </marker>
+  </defs>
+
+  <!-- Title strip at top (semi-transparent dark background so text is readable) -->
+  <rect x="0" y="0" width="1344" height="48" fill="rgba(0,0,0,0.55)"/>
+  <text x="672" y="30" text-anchor="middle" font-size="22" font-weight="bold" fill="white" stroke="black" stroke-width="0.4">
+    ภาพตัดขวางของแปลงขั้นบรรได — น้ำไหลซิกแซกสลับซ้าย-ขวา
+  </text>
+
+  <!-- ====== PLOT 1 (top, y≈120-200) — flows L → R ====== -->
+  <g id="plot1">
+    <!-- Plot label (top-left) -->
+    <rect x="20" y="100" width="120" height="22" rx="3" fill="rgba(0,0,0,0.65)"/>
+    <text x="80" y="115" text-anchor="middle" font-size="13" font-weight="bold" fill="white">แปลงที่ 1 (PLOT 1)</text>
+    <!-- Big arrow #1: LEFT → RIGHT -->
+    <line x1="200" y1="155" x2="1130" y2="155" stroke="#1d4ed8" stroke-width="8" marker-end="url(#arrowheadOverlay)" opacity="0.92"/>
+    <!-- White outline for contrast against the photo -->
+    <line x1="200" y1="155" x2="1130" y2="155" stroke="white" stroke-width="10" opacity="0.0"/>
+    <!-- Numbered badge -->
+    <circle cx="220" cy="155" r="18" fill="#1d4ed8" stroke="white" stroke-width="2.5"/>
+    <text x="220" y="161" text-anchor="middle" font-size="16" font-weight="bold" fill="white">1</text>
+    <!-- Direction label -->
+    <rect x="540" y="135" width="220" height="20" rx="3" fill="rgba(0,0,0,0.6)"/>
+    <text x="650" y="149" text-anchor="middle" font-size="14" font-weight="bold" fill="#bfdbfe">น้ำไหลซ้าย→ขวา (L→R)</text>
+  </g>
+
+  <!-- Drop arrow #2 (right side, from end of plot 1 down to start of plot 2) -->
+  <line x1="1158" y1="208" x2="1158" y2="248" stroke="#1d4ed8" stroke-width="6" marker-end="url(#arrowheadDownOverlay)" opacity="0.92"/>
+  <circle cx="1158" cy="228" r="16" fill="#1d4ed8" stroke="white" stroke-width="2.5"/>
+  <text x="1158" y="233" text-anchor="middle" font-size="14" font-weight="bold" fill="white">2</text>
+  <rect x="1180" y="220" width="120" height="20" rx="3" fill="rgba(0,0,0,0.6)"/>
+  <text x="1240" y="234" text-anchor="middle" font-size="11" fill="#bfdbfe">ตกลงฝั่งขวา</text>
+
+  <!-- ====== PLOT 2 (y≈250-330) — flows R → L ====== -->
+  <g id="plot2">
+    <rect x="1204" y="230" width="120" height="22" rx="3" fill="rgba(0,0,0,0.65)"/>
+    <text x="1264" y="245" text-anchor="middle" font-size="13" font-weight="bold" fill="white">แปลงที่ 2 (PLOT 2)</text>
+    <!-- Big arrow #3: RIGHT → LEFT -->
+    <line x1="1130" y1="285" x2="220" y2="285" stroke="#1d4ed8" stroke-width="8" marker-end="url(#arrowheadOverlay)" opacity="0.92"/>
+    <circle cx="1110" cy="285" r="18" fill="#1d4ed8" stroke="white" stroke-width="2.5"/>
+    <text x="1110" y="291" text-anchor="middle" font-size="16" font-weight="bold" fill="white">3</text>
+    <rect x="580" y="265" width="220" height="20" rx="3" fill="rgba(0,0,0,0.6)"/>
+    <text x="690" y="279" text-anchor="middle" font-size="14" font-weight="bold" fill="#bfdbfe">น้ำไหลขวา→ซ้าย (R→L)</text>
+  </g>
+
+  <!-- Drop arrow #4 (left side, from end of plot 2 down to start of plot 3) -->
+  <line x1="186" y1="338" x2="186" y2="378" stroke="#1d4ed8" stroke-width="6" marker-end="url(#arrowheadDownOverlay)" opacity="0.92"/>
+  <circle cx="186" cy="358" r="16" fill="#1d4ed8" stroke="white" stroke-width="2.5"/>
+  <text x="186" y="363" text-anchor="middle" font-size="14" font-weight="bold" fill="white">4</text>
+  <rect x="40" y="350" width="120" height="20" rx="3" fill="rgba(0,0,0,0.6)"/>
+  <text x="100" y="364" text-anchor="middle" font-size="11" fill="#bfdbfe">ตกลงฝั่งซ้าย</text>
+
+  <!-- ====== PLOT 3 (y≈380-460) — flows L → R ====== -->
+  <g id="plot3">
+    <rect x="20" y="360" width="120" height="22" rx="3" fill="rgba(0,0,0,0.65)"/>
+    <text x="80" y="375" text-anchor="middle" font-size="13" font-weight="bold" fill="white">แปลงที่ 3 (PLOT 3)</text>
+    <!-- Big arrow #5: LEFT → RIGHT -->
+    <line x1="220" y1="415" x2="1130" y2="415" stroke="#1d4ed8" stroke-width="8" marker-end="url(#arrowheadOverlay)" opacity="0.92"/>
+    <circle cx="240" cy="415" r="18" fill="#1d4ed8" stroke="white" stroke-width="2.5"/>
+    <text x="240" y="421" text-anchor="middle" font-size="16" font-weight="bold" fill="white">5</text>
+    <rect x="540" y="395" width="220" height="20" rx="3" fill="rgba(0,0,0,0.6)"/>
+    <text x="650" y="409" text-anchor="middle" font-size="14" font-weight="bold" fill="#bfdbfe">น้ำไหลซ้าย→ขวา (L→R)</text>
+  </g>
+
+  <!-- Drop arrow #6 (right side, from end of plot 3 down to start of plot 4) -->
+  <line x1="1158" y1="468" x2="1158" y2="508" stroke="#1d4ed8" stroke-width="6" marker-end="url(#arrowheadDownOverlay)" opacity="0.92"/>
+  <circle cx="1158" cy="488" r="16" fill="#1d4ed8" stroke="white" stroke-width="2.5"/>
+  <text x="1158" y="493" text-anchor="middle" font-size="14" font-weight="bold" fill="white">6</text>
+  <rect x="1180" y="480" width="120" height="20" rx="3" fill="rgba(0,0,0,0.6)"/>
+  <text x="1240" y="494" text-anchor="middle" font-size="11" fill="#bfdbfe">ตกลงฝั่งขวา</text>
+
+  <!-- ====== PLOT 4 (bottom, y≈510-590) — flows R → L ====== -->
+  <g id="plot4">
+    <rect x="1204" y="490" width="120" height="22" rx="3" fill="rgba(0,0,0,0.65)"/>
+    <text x="1264" y="505" text-anchor="middle" font-size="13" font-weight="bold" fill="white">แปลงที่ 4 (PLOT 4)</text>
+    <!-- Big arrow #7: RIGHT → LEFT -->
+    <line x1="1130" y1="545" x2="220" y2="545" stroke="#1d4ed8" stroke-width="8" marker-end="url(#arrowheadOverlay)" opacity="0.92"/>
+    <circle cx="1110" cy="545" r="18" fill="#1d4ed8" stroke="white" stroke-width="2.5"/>
+    <text x="1110" y="551" text-anchor="middle" font-size="16" font-weight="bold" fill="white">7</text>
+    <rect x="580" y="525" width="220" height="20" rx="3" fill="rgba(0,0,0,0.6)"/>
+    <text x="690" y="539" text-anchor="middle" font-size="14" font-weight="bold" fill="#bfdbfe">น้ำไหลขวา→ซ้าย (R→L)</text>
+  </g>
+
+  <!-- ====== LEGEND (bottom strip) ====== -->
+  <rect x="0" y="620" width="1344" height="148" fill="rgba(0,0,0,0.7)"/>
+  <text x="20" y="650" font-size="16" font-weight="bold" fill="white">สรุปรูปแบบการไหลของน้ำ (Zigzag Water Flow Pattern)</text>
+
+  <g font-size="13" fill="white">
+    <text x="20" y="680">• แปลงที่ 1: น้ำไหลซ้าย→ขวา (L→R) <tspan fill="#bfdbfe" font-weight="bold">→</tspan></text>
+    <text x="20" y="703">• แปลงที่ 2: น้ำไหลขวา→ซ้าย (R→L) <tspan fill="#bfdbfe" font-weight="bold">←</tspan> — สลับทิศ</text>
+    <text x="20" y="726">• แปลงที่ 3: น้ำไหลซ้าย→ขวา (L→R) <tspan fill="#bfdbfe" font-weight="bold">→</tspan> — สลับทิศ</text>
+    <text x="20" y="749">• แปลงที่ 4: น้ำไหลขวา→ซ้าย (R→L) <tspan fill="#bfdbfe" font-weight="bold">←</tspan> — สลับทิศ</text>
+  </g>
+
+  <g font-size="13" fill="white">
+    <text x="660" y="680">• ขั้นบรรไดดิน 1.5 ม. + คันหญ้าแฝก 0.8 ม.</text>
+    <text x="660" y="703">• ฝายชะลอน้ำที่จุดตกจากชั้นบนลงชั้นล่าง</text>
+    <text x="660" y="726" font-weight="bold" fill="#bfdbfe">รูปแบบรวม: L→R, R→L, L→R, R→L (ซิกแซก)</text>
+    <text x="660" y="749" font-size="11" fill="#9ca3af">ภายในแปลงปลูกพืชหมุนเวียน ชา หรือ กาแฟ</text>
+  </g>
+</svg>

@@ -188,7 +188,8 @@ export function DashboardSection() {
         <CardContent>
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
             <PlotDesignImage
-              src="/plots/cross-section.png"
+              src="/plots/cross-section-photo.png"
+              overlaySrc="/plots/cross-section-overlay.svg"
               title={locale === "th" ? "ภาพตัดขวางของแปลงขั้นบรรได (น้ำไหลซิกแซก)" : "Cross-section: zigzag water flow"}
               caption={locale === "th"
                 ? "น้ำถูกบังคับให้ไหลจากต้นแปลงบน → ท้ายแปลง → ลงต้นแปลงถัดไป → สลับซ้าย-ขวา (1.5 ม. terrace + 0.8 ม. vetiver bund + check dam)"
@@ -413,10 +414,13 @@ function PlotDesignImage({
   src,
   title,
   caption,
+  overlaySrc,
 }: {
   src: string;
   title: string;
   caption: string;
+  /** Optional transparent SVG overlay (arrows/labels) stacked on top of src. */
+  overlaySrc?: string;
 }) {
   return (
     <figure className="overflow-hidden rounded-md border bg-card">
@@ -427,6 +431,15 @@ function PlotDesignImage({
           className="h-full w-full object-cover"
           loading="lazy"
         />
+        {overlaySrc && (
+          <img
+            src={overlaySrc}
+            alt=""
+            aria-hidden="true"
+            className="absolute inset-0 h-full w-full object-cover pointer-events-none"
+            loading="lazy"
+          />
+        )}
       </div>
       <figcaption className="space-y-0.5 p-3">
         <div className="text-xs font-medium">{title}</div>

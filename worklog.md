@@ -398,3 +398,47 @@ Stage Summary:
   - T-VER net = 678.993 tCO₂e (up from 649.425 without biochar — gain of 29.568 tCO₂e after 10% buffer deduction).
   - Switch OFF: biochar column disappears, credits return to original values.
 - Lint clean, dev server stable, page renders 200 OK.
+
+---
+Task ID: 11
+Agent: main
+Task: Replace the hand-drawn SVG cross-section diagram with a realistic color photo + transparent SVG arrow overlay showing zigzag water flow.
+
+Work Log:
+- Generated a photorealistic cross-section image of a highland terraced farm via z-ai image (1344×768, 276KB):
+  - 4 terrace levels descending a mountain slope.
+  - Brown loam soil terraces 1.5 m wide.
+  - Dense deep-green vetiver grass clumps on outer bunds.
+  - Small tea bushes and arabica coffee plants inside each terrace.
+  - Mountain topographic background with golden hour lighting.
+  - NO text, NO arrows, NO labels (arrows come from the overlay).
+  - Saved as /public/plots/cross-section-photo.png.
+- Created a transparent SVG overlay /public/plots/cross-section-overlay.svg (8.9KB) with:
+  - Title strip at top: "ภาพตัดขวางของแปลงขั้นบรรได — น้ำไหลซิกแซกสลับซ้าย-ขวา"
+  - 4 numbered arrows with badges 1, 3, 5, 7 (each on its own plot):
+    - Plot 1 (top, y≈155): arrow #1 L→R + label "น้ำไหลซ้าย→ขวา (L→R)"
+    - Plot 2 (y≈285): arrow #3 R→L + label "น้ำไหลขวา→ซ้าย (R→L)"
+    - Plot 3 (y≈415): arrow #5 L→R + label "น้ำไหลซ้าย→ขวา (L→R)"
+    - Plot 4 (bottom, y≈545): arrow #7 R→L + label "น้ำไหลขวา→ซ้าย (R→L)"
+  - Drop arrows #2, #4, #6 with badges between plots:
+    - #2: right side (from end of plot 1 down to start of plot 2)
+    - #4: left side (from end of plot 2 down to start of plot 3)
+    - #6: right side (from end of plot 3 down to start of plot 4)
+  - Each arrow + badge has white outline for contrast against the photo.
+  - Bottom legend strip (semi-transparent dark background) with full summary of all 4 plot directions.
+- Updated `PlotDesignImage` helper in dashboard-section.tsx to accept an optional `overlaySrc` prop — renders the overlay as a second <img> absolutely positioned on top of the base image.
+- Updated the cross-section PlotDesignImage call:
+  - src: "/plots/cross-section-photo.png" (was "/plots/cross-section.png")
+  - overlaySrc: "/plots/cross-section-overlay.svg"
+  - title + caption unchanged.
+- Old hand-drawn SVG + PNG kept on disk for reference (not referenced in UI anymore).
+
+Stage Summary:
+- Cross-section gallery card now shows a photorealistic image of terraced highland farm (tea/coffee + vetiver grass + brown soil + mountain backdrop) with overlaid blue numbered arrows showing the exact zigzag water-flow pattern (L→R, R→L, L→R, R→L).
+- Verified end-to-end via VLM (z-ai vision, glm-5v-turbo) using a screenshot of the gallery card from the browser:
+  - (1) Photorealistic terraced farm image: YES
+  - (2) Blue numbered arrows 1-7 visible: YES
+  - (3) Plot 1 (top) arrow points right (L→R): YES
+  - (4) Plot 2 arrow points left (R→L), alternating: YES
+  - (5) Overall zigzag pattern L→R, R→L, L→R, R→L: YES
+- Lint clean, dev server stable, page renders 200 OK, both image files served correctly (photo 281KB, overlay 8.9KB).
