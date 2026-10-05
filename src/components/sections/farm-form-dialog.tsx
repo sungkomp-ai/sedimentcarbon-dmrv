@@ -31,11 +31,11 @@ const DEFAULT_POLYGON = JSON.stringify({
   type: "Polygon",
   coordinates: [
     [
-      [100.8310, 19.0410],
-      [100.8366, 19.0410],
-      [100.8366, 19.0474],
-      [100.8310, 19.0474],
-      [100.8310, 19.0410],
+      [100.7650, 18.8350],
+      [100.7850, 18.8350],
+      [100.7850, 18.8550],
+      [100.7650, 18.8550],
+      [100.7650, 18.8350],
     ],
   ],
 });
@@ -111,12 +111,12 @@ export function FarmFormDialog({ open, onOpenChange }: FarmDialogProps) {
   const [nameTh, setNameTh] = useState("");
   const [nameEn, setNameEn] = useState("");
   const [geom, setGeom] = useState(DEFAULT_POLYGON);
-  const [soilType, setSoilType] = useState("Sandy loam");
-  const [slope, setSlope] = useState("15");
-  const [elevationM, setElevationM] = useState("600");
+  const [soilType, setSoilType] = useState("Haplic Acrisols (highland loam)");
+  const [slope, setSlope] = useState("25");
+  const [elevationM, setElevationM] = useState("950");
   const [projectStart, setProjectStart] = useState("2024-01-01");
   const [standard, setStandard] = useState("TVER");
-  const [traps, setTraps] = useState<string[]>(["terrace_step", "vetiver_bund", "check_dam"]);
+  const [traps, setTraps] = useState<string[]>(["terrace_step", "vetiver_bund", "check_dam", "alternating_slope"]);
   const [crops, setCrops] = useState<string[]>(["cover_crop"]);
   const [priorLandUse, setPriorLandUse] = useState("shifting_cultivation");
   // plot design params
@@ -134,9 +134,9 @@ export function FarmFormDialog({ open, onOpenChange }: FarmDialogProps) {
     setNameTh("");
     setNameEn("");
     setGeom(DEFAULT_POLYGON);
-    setSoilType("Sandy loam");
-    setSlope("15");
-    setElevationM("600");
+    setSoilType("Haplic Acrisols (highland loam)");
+    setSlope("25");
+    setElevationM("950");
     setProjectStart("2024-01-01");
     setStandard("TVER");
     setTraps(["terrace_step", "vetiver_bund", "check_dam"]);

@@ -69,8 +69,9 @@ export async function GET() {
   // Build a credit-comparison snapshot using a farm with both baseline and
   // current samples. Prefer a Nan highland farm (has biochar + full design).
   let comparison: ReturnType<typeof compareAllStandards> | null = null;
+  // Use demo-farm-001 (now a highland farm with full design) for credit comparison
   const firstFarm =
-    farms.find((f) => f.id === "nan-farm-004") ??
+    farms.find((f) => f.id === "demo-farm-001") ??
     farms.find((f) => f.id?.startsWith("nan-")) ??
     farms[0];
   if (firstFarm) {

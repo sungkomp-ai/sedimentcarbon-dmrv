@@ -674,3 +674,38 @@ Stage Summary:
 - Date formatting verified: "01 ธ.ค. 2567" (Buddhist Era) shows correctly in sediment table + dashboard activity feed.
 - Number formatting verified: "312.50", "40,940", "6,882" all display correctly.
 - Lint clean, dev server stable.
+
+---
+Task ID: 19
+Agent: main
+Task: Move demo farm from lowland (Nakhon Ratchasima) to highland (Nan province) + update all data to match highland conditions.
+
+Work Log:
+- Updated demo-farm-001 in seed.ts:
+  - Name: "แปลงสาธิตทุ่งกะเฉดา" → "แปลงสาธิตบ้านห้วก้า" (Demo Highland Farm — Ban Hua Kha, Nan)
+  - Location: Nakhon Ratchasima (102.102, 14.97) → Pua, Nan (100.765, 18.835)
+  - Area: 50 ha → 45 ha
+  - Slope: 3.5% → 25% (highland)
+  - Elevation: 280m → 950m
+  - Soil: Sandy loam → Haplic Acrisols (highland red-yellow loam)
+  - Trap types: contour_bund + vegetative_strip → terrace_step + vetiver_bund + check_dam + alternating_slope (full design)
+  - Crops: rice + cover_crop → upland_rice + soybean + cover_crop
+  - Prior land use: conventional_tillage → shifting_cultivation
+  - Plot design: all zeros/false → 1.5m terrace + 0.8m bund + alternating + check dam
+  - Erosion: 8 t/ha/yr → 55 t/ha/yr
+  - Trapping efficiency: 0.45 → 0.75
+  - SOC baseline: 1.88-1.99 → 1.45-1.61 %C (lower on highland)
+  - SOC current: 2.15-2.30 → 1.88-2.05 %C
+  - Coarse frag: 5% → 10%
+  - Activities: rice harvest/tillage → cover crop + upland rice + soybean harvest + trap maintenance
+  - IoT readings: 22.4% moisture / 28.6°C → 28.2% / 22.3°C (cooler highland)
+- Updated DEFAULT_POLYGON in farm-form-dialog.tsx to Nan highland coordinates.
+- Updated farm form defaults: slope 15→25, elevation 600→950, soil type to highland loam.
+- Updated dashboard API to prefer demo-farm-001 for credit comparison (now highland with full design).
+
+Stage Summary:
+- All 5 farms are now on highland in Nan province — no lowland/flat farms remain.
+- Dashboard shows "พื้นที่สูง" badge + 5 polygons all in Nan area on the map.
+- Demo farm card shows: 45 ha, 950m elevation, 25% slope, upland_rice/soybean/cover_crop, T-VER, former shifting cultivation.
+- Farm form defaults now pre-fill with highland values (25% slope, 950m elevation, highland soil).
+- Lint clean, dev server stable, page renders 200 OK.
