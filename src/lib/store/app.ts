@@ -11,6 +11,7 @@ export type SectionId =
   | "standards"
   | "audit"
   | "vvb"
+  | "import"
   | "guide";
 
 interface AppState {

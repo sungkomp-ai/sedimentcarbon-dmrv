@@ -442,3 +442,45 @@ Stage Summary:
   - (4) Plot 2 arrow points left (R→L), alternating: YES
   - (5) Overall zigzag pattern L→R, R→L, L→R, R→L: YES
 - Lint clean, dev server stable, page renders 200 OK, both image files served correctly (photo 281KB, overlay 8.9KB).
+
+---
+Task ID: 12
+Agent: main
+Task: Add import menu for new farms/projects + conditional activity recording + IoT sensor data integration.
+
+Work Log:
+- Added 3 new Prisma models:
+  - IoTReading (sensorId, sensorType, value, unit, measuredAt, metadata, farmId FK)
+  - ActivityRule (name, sensorType, operator, threshold, activity, enabled, cooldownHr, lastFiredAt, firedCount)
+  - ImportLog (filename, source, rowsTotal/Ok/Failed, errors)
+  - Linked all to Farm model via relations (iotReadings[], activityRules[]).
+- Created 5 new API routes:
+  - POST /api/iot/ingest — accepts single or batch IoT readings, evaluates all active rules, and auto-logs management activities when conditions are met (with cooldown check).
+  - GET /api/iot — lists recent readings (filter by farmId/sensorType).
+  - GET/POST /api/activities/rules — list and create conditional rules.
+  - PATCH/DELETE /api/activities/rules/[ruleId] — toggle/update/delete rules.
+  - POST /api/activities — manually log a new activity.
+  - POST /api/farms/import — CSV text or JSON array → bulk-create farms (auto-detects header, builds GeoJSON from bbox, validates).
+- Added 'import' to SectionId, sidebar nav (Upload icon), topbar labels, app-shell section switching.
+- Built src/components/sections/import-section.tsx with 4 sub-tabs:
+  1. **ข้อมูล IoT** — live readings table + "ส่งค่าจำลอง IoT" button (sends soil_moisture=15% to trigger the low-moisture rule) + endpoint info.
+  2. **กฎอัตโนมัติ** — create new rule form (name, sensorType, operator, threshold, activity, cooldown) + existing rules list with toggle switch + firedCount/lastFired display.
+  3. **กิจกรรมการจัดการ** — log new activity form + activities list (auto-fired activities tagged with [AUTO] badge).
+  4. **นำเข้าแปลง** — CSV textarea (pre-filled with sample) + import button + result summary (total/ok/failed + error details).
+- Seeded demo data: 12 IoT readings across 5 farms (soil_moisture, temperature, rainfall, humidity, ec) + 3 conditional rules (low moisture < 20%, heavy rainfall > 30mm, high temp > 35°C).
+- Fixed Prisma client naming: model `IoTReading` → property `ioTReading` (capital T in camelCase conversion).
+
+Stage Summary:
+- Full IoT pipeline works end-to-end:
+  1. IoT sensor sends reading → POST /api/iot/ingest
+  2. System saves reading + evaluates all active rules
+  3. If condition matches + cooldown expired → auto-logs management activity with [IoT auto-fired] note
+  4. Activity appears in Activities tab with [AUTO] badge
+- Verified via Agent Browser:
+  - 12 IoT readings visible in the IoT tab
+  - 3 rules visible in the Rules tab (all enabled)
+  - "ส่งค่าจำลอง IoT" button → sends soil_moisture=15% → toast "saved: 1, fired rules: 1"
+  - API verification: new activity "fertiliser" on demo-farm-001 with note "[IoT auto-fired] Low soil moisture → auto-irrigation alert — soil_moisture = 15% (< 20)"
+  - Rule firedCount incremented to 1, lastFiredAt set.
+- CSV import: pre-filled with sample CSV (2 demo farms), import button creates farms via /api/farms/import.
+- Lint clean, dev server stable, page renders 200 OK.

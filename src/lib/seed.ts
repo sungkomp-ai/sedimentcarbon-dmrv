@@ -615,6 +615,7 @@ async function seedFarm(farm: SeedFarm, user: { id: string }) {
   console.log(`  ✓ ${farm.nameEn} (${farm.areaHa} ha, ${farm.elevationM}m)`);
 }
 
+
 async function main() {
   console.log("🌱 Seeding SedimentCarbon dMRV database...");
   console.log(`  ${FARMS.length} farms to seed`);
@@ -639,6 +640,80 @@ async function main() {
   for (const farm of FARMS) {
     await seedFarm(farm, user);
   }
+
+// ===== Demo IoT readings =====
+console.log("  Adding demo IoT readings + activity rules...");
+await db.ioTReading.deleteMany({});
+await db.activityRule.deleteMany({});
+
+// Soil moisture sensors at each monitoring plot (varies by farm)
+const iotDemo = [
+  { farmId: "demo-farm-001", sensorId: "soil-P01", sensorType: "soil_moisture", value: 22.4, unit: "%" },
+  { farmId: "demo-farm-001", sensorId: "soil-P02", sensorType: "soil_moisture", value: 19.8, unit: "%" },
+  { farmId: "demo-farm-001", sensorId: "temp-P01", sensorType: "temperature", value: 28.6, unit: "C" },
+  { farmId: "demo-farm-001", sensorId: "rain-01", sensorType: "rainfall", value: 12.5, unit: "mm" },
+  { farmId: "nan-farm-001", sensorId: "soil-N1", sensorType: "soil_moisture", value: 31.2, unit: "%" },
+  { farmId: "nan-farm-001", sensorId: "temp-N1", sensorType: "temperature", value: 21.4, unit: "C" },
+  { farmId: "nan-farm-001", sensorId: "humid-N1", sensorType: "humidity", value: 78.5, unit: "%" },
+  { farmId: "nan-farm-002", sensorId: "soil-N2", sensorType: "soil_moisture", value: 17.5, unit: "%" },
+  { farmId: "nan-farm-002", sensorId: "ec-N2", sensorType: "ec", value: 0.42, unit: "mS/cm" },
+  { farmId: "nan-farm-003", sensorId: "soil-N3", sensorType: "soil_moisture", value: 25.1, unit: "%" },
+  { farmId: "nan-farm-004", sensorId: "soil-N4", sensorType: "soil_moisture", value: 18.9, unit: "%" },
+  { farmId: "nan-farm-004", sensorId: "temp-N4", sensorType: "temperature", value: 18.7, unit: "C" },
+];
+const now = new Date();
+for (const r of iotDemo) {
+  await db.ioTReading.create({
+    data: {
+      ...r,
+      measuredAt: new Date(now.getTime() - Math.random() * 24 * 3600 * 1000),
+      metadata: JSON.stringify({ source: "demo-seed" }),
+    },
+  });
+}
+
+// Demo activity rules
+await db.activityRule.create({
+  data: {
+    farmId: null,  // applies to all farms
+    name: "Low soil moisture → auto-irrigation alert",
+    sensorType: "soil_moisture",
+    operator: "<",
+    threshold: 20,
+    activity: "fertiliser",
+    note: "เมื่อความชื้นในดินต่ำกว่า 20% → ระบบแจ้งเตือนให้รดน้ำ/ใส่ปุ๋ย",
+    enabled: true,
+    cooldownHr: 24,
+  },
+});
+await db.activityRule.create({
+  data: {
+    farmId: null,
+    name: "Heavy rainfall → log trap maintenance reminder",
+    sensorType: "rainfall",
+    operator: ">",
+    threshold: 30,
+    activity: "trap_maintenance",
+    note: "เมื่อฝนตกมากกว่า 30 มม. → ต้องตรวจและบำรุงฝายชะลอน้ำ",
+    enabled: true,
+    cooldownHr: 48,
+  },
+});
+await db.activityRule.create({
+  data: {
+    farmId: null,
+    name: "High temperature → cover crop recommendation",
+    sensorType: "temperature",
+    operator: ">",
+    threshold: 35,
+    activity: "cover_crop",
+    note: "เมื่ออุณหภูมิสูงกว่า 35°C → แนะนำให้ปลูกพืชคลุมดิน",
+    enabled: true,
+    cooldownHr: 72,
+  },
+});
+
+
 
   console.log(`✅ Seed complete. ${FARMS.length} farms created.`);
   console.log(`   Owner: ${user.email}`);

@@ -11,6 +11,8 @@ import {
   BadgeCheck,
   BookOpen,
   Leaf,
+  Upload,
+  Radio,
 } from "lucide-react";
 import { useApp, type SectionId } from "@/lib/store/app";
 import { useI18n } from "@/lib/i18n/provider";
@@ -31,6 +33,7 @@ const NAV: NavItem[] = [
   { id: "standards", key: "nav.standards", icon: ShieldCheck },
   { id: "audit", key: "nav.audit", icon: FileClock },
   { id: "vvb", key: "nav.vvb", icon: BadgeCheck },
+  { id: "import", key: "nav.import", icon: Upload },
   { id: "guide", key: "nav.guide", icon: BookOpen },
 ];
 

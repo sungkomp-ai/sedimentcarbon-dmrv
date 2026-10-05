@@ -17,6 +17,7 @@ const SECTION_LABELS: Record<SectionId, string> = {
   standards: "nav.standards",
   audit: "nav.audit",
   vvb: "nav.vvb",
+  import: "nav.import",
   guide: "nav.guide",
 };
 

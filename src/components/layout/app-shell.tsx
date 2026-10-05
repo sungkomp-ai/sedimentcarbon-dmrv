@@ -12,6 +12,7 @@ import { SedimentSection } from "@/components/sections/sediment-section";
 import { CalculatorSection } from "@/components/sections/calculator-section";
 import { AuditSection } from "@/components/sections/audit-section";
 import { VvbSection } from "@/components/sections/vvb-section";
+import { ImportSection } from "@/components/sections/import-section";
 import { StandardsSection } from "@/components/sections/standards-section";
 import { GuideSection } from "@/components/sections/guide-section";
 import { Leaf, Github } from "lucide-react";
@@ -37,6 +38,7 @@ export function AppShell() {
               {active === "standards" && <StandardsSection />}
               {active === "audit" && <AuditSection />}
               {active === "vvb" && <VvbSection />}
+              {active === "import" && <ImportSection />}
               {active === "guide" && <GuideSection />}
             </div>
           </main>

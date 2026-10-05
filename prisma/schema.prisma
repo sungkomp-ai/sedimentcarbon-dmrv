@@ -54,6 +54,8 @@ model Farm {
   activities    ManagementActivity[]
   calculations   CreditCalculation[]
   verifications  VerificationRound[]
+  iotReadings   IoTReading[]
+  activityRules ActivityRule[]
 
   @@index([ownerId])
   @@index([groupId])
@@ -188,4 +190,59 @@ model VerificationRound {
   @@unique([farmId, roundType, roundNumber])
   @@index([farmId])
   @@index([status])
+}
+
+model IoTReading {
+  id          String   @id @default(cuid())
+  farmId      String?
+  sensorId    String   // e.g., "soil-moisture-P01"
+  sensorType  String   // soil_moisture | temperature | rainfall | humidity | ndvi | ec
+  value       Float
+  unit        String   // %, C, mm, mV, -
+  measuredAt  DateTime
+  metadata    String?  // JSON: {lat, lon, battery, rawSignal, ...}
+  createdAt   DateTime @default(now())
+
+  farm Farm? @relation(fields: [farmId], references: [id])
+
+  @@index([farmId])
+  @@index([sensorType])
+  @@index([measuredAt])
+  @@index([sensorId])
+}
+
+model ActivityRule {
+  id          String   @id @default(cuid())
+  farmId      String?
+  name        String
+  sensorType  String?  // when null, rule is manual (won't fire on IoT)
+  operator    String   // < | > | <= | >= | ==
+  threshold   Float
+  activity    String   // activity type to log when condition is true
+  note        String?
+  enabled     Boolean  @default(true)
+  lastFiredAt DateTime?
+  firedCount  Int      @default(0)
+  cooldownHr  Int      @default(24)  // min hours between firings
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  farm Farm? @relation(fields: [farmId], references: [id])
+
+  @@index([farmId])
+  @@index([enabled])
+}
+
+model ImportLog {
+  id          String   @id @default(cuid())
+  filename    String
+  source      String   // csv | geojson | iot_batch
+  rowsTotal   Int      @default(0)
+  rowsOk      Int      @default(0)
+  rowsFailed  Int      @default(0)
+  errors      String?  // JSON array of {row, message}
+  createdAt   DateTime @default(now())
+
+  @@index([source])
+  @@index([createdAt])
 }
