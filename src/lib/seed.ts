@@ -301,40 +301,43 @@ function computeRealisticSedimentTraps(farm: SeedFarm): {
   // Determine number of terrace levels (= number of traps)
   let numTraps: number;
   if ((farm.slopePct ?? 0) < 8) {
-    // Flat lowland — no terraces, just a few check dams
     numTraps = Math.max(1, Math.min(2, Math.floor(farm.areaHa / 25)));
   } else if ((farm.slopePct ?? 0) < 15) {
-    // Gentle slope — 2-4 traps
     numTraps = Math.max(2, Math.min(4, Math.floor(farm.areaHa / 8)));
   } else {
-    // Highland — 7-10 levels based on slope
     const base = 7;
     const bonus = Math.floor(((farm.slopePct ?? 0) - 15) / 5);
     numTraps = Math.min(10, base + bonus);
   }
 
-  // Trap physical area: small structure (3-6 m²) at the level outlet
-  const trapPhysicalM2 = 4;
+  // Trap physical area: varies per farm — bigger farms have slightly bigger
+  // monitoring structures. Range: 3.0 - 6.5 m² (typical for field sediment traps)
+  const baseTrapArea = Math.max(3, Math.min(6.5, 3 + farm.areaHa / 20));
 
-  // Each trap monitors a SMALL sub-catchment (~50-100 m²) at its level's
-  // outlet. This is the standard sediment-trap monitoring design — the
-  // trap's catchment is small, so depth stays realistic (5-35 cm).
-  // The trap captures only a sample; the BIG farm total is computed
-  // separately in sediment-estimate.ts.
-  const trapCatchmentHa = 0.005; // 50 m²
+  // Each trap monitors a small sub-catchment at the level's outlet.
   const sedBulkDensity = 1.3;
   const years = 5;
 
   const traps: { trapId: string; areaM2: number; deltaHcm: number }[] = [];
-  const farmPrefix =
-    farm.id === "demo-farm-001"
-      ? "DE"
-      : farm.id.split("-")[0].toUpperCase().slice(0, 2) || "T";
+
+  // Farm-specific prefix from farm name (more realistic than generic "NA")
+  const farmCode =
+    farm.id === "demo-farm-001" ? "DEMO"
+    : farm.id === "nan-farm-001" ? "NAN01"
+    : farm.id === "nan-farm-002" ? "NAN02"
+    : farm.id === "nan-farm-003" ? "NAN03"
+    : farm.id === "nan-farm-004" ? "NAN04"
+    : "FRM";
 
   for (let i = 0; i < numTraps; i++) {
-    // ±15% per-trap variation for realism
+    // ±15% per-trap variation in both area and depth
     const variation = 1 + ((i * 7 + 3) % 30 - 15) / 100;
-    // Mass of sediment captured by this trap's small monitoring catchment
+    // Slightly different trap area per level (realistic — traps are hand-built)
+    const trapArea = Math.round(baseTrapArea * variation * 100) / 100;
+
+    // Monitoring catchment: 50-80 m² depending on trap position
+    const trapCatchmentHa = (50 + i * 3) / 10000;
+
     const sampleMassT =
       farm.erosionRateTPerHaYr *
       trapCatchmentHa *
@@ -342,14 +345,17 @@ function computeRealisticSedimentTraps(farm: SeedFarm): {
       years *
       variation;
     const sampleVolumeM3 = sampleMassT / sedBulkDensity;
-    // Depth = volume / trap_physical_area (in cm), capped at minimum 5 cm
     const deltaHcm = Math.max(
       5,
-      Math.round((sampleVolumeM3 / trapPhysicalM2) * 100 * 10) / 10
+      Math.round((sampleVolumeM3 / trapArea) * 100 * 10) / 10
     );
+
+    // Trap ID format: {farmCode}-L{level}-{trapType}
+    // e.g., NAN04-L01-V (V = vetiver bund outlet)
+    const trapTypeCode = farm.plotDesign?.hasCheckDam ? "CD" : "VB"; // CD=CheckDam, VB=VetiverBund
     traps.push({
-      trapId: `${farmPrefix}-L${String(i + 1).padStart(2, "0")}-TRAP`,
-      areaM2: trapPhysicalM2,
+      trapId: `${farmCode}-L${String(i + 1).padStart(2, "0")}-${trapTypeCode}`,
+      areaM2: trapArea,
       deltaHcm,
     });
   }

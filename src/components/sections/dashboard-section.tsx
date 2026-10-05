@@ -140,11 +140,10 @@ export function DashboardSection() {
             </div>
             <h3 className="text-lg font-medium">{t("dashboard.empty.title")}</h3>
             <p className="text-sm text-muted-foreground max-w-md">
-              {t("dashboard.empty.desc")}
+              {locale === "th"
+                ? "ไปที่เมนู 'แปลงเกษตร' ทางซ้ายเพื่อเพิ่มแปลงใหม่ พร้อมระบุพิกัดขอบเขตแปลงบนแผนที่"
+                : "Go to 'Farms' in the left sidebar to add a new farm with GPS boundary"}
             </p>
-            <Button onClick={() => setSection("farms")} className="gap-2">
-              {t("farms.new")} <ArrowRight className="h-4 w-4" />
-            </Button>
           </CardContent>
         </Card>
       )}

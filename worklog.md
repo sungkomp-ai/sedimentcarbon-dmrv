@@ -484,3 +484,33 @@ Stage Summary:
   - Rule firedCount incremented to 1, lastFiredAt set.
 - CSV import: pre-filled with sample CSV (2 demo farms), import button creates farms via /api/farms/import.
 - Lint clean, dev server stable, page renders 200 OK.
+
+---
+Task ID: 13
+Agent: main
+Task: (1) Remove "add farm" button from Dashboard top — should be in sidebar only. (2) Clarify "พื้นที่กับดัก (m²)" label. (3) Fix per-farm trap data to be realistic.
+
+Work Log:
+- Removed the "เพิ่มแปลงใหม่" button from the Dashboard's empty-state card. Replaced with a text-only message: "ไปที่เมนู 'แปลงเกษตร' ทางซ้ายเพื่อเพิ่มแปลงใหม่ พร้อมระบุพิกัดขอบเขตแปลงบนแผนที่" (EN: "Go to 'Farms' in the left sidebar to add a new farm with GPS boundary"). The Farms section remains the primary entry point for adding farms (accessible via sidebar nav).
+- Updated sediment labels in translations (TH + EN):
+  - "พื้นที่กับดัก (m²)" → "พื้นที่กับดักมอนิเตอร์ริ่ง (m²)" (Monitoring Trap Area — clarifies this is the physical monitoring structure, NOT the farm's total sediment-trap area)
+  - "ความสูงตะกอน (cm)" → "ความสูงตะกอนสะสม (cm)" (Accumulated Sediment Depth — clearer that it's the depth of sediment accumulated in the trap)
+  - EN equivalents updated too.
+- Rewrote `computeRealisticSedimentTraps()` in seed.ts:
+  - Trap physical area now VARIES per farm: `baseTrapArea = clamp(3, 6.5, 3 + areaHa/20)` — bigger farms have slightly bigger monitoring structures. Each trap also gets ±15% variation.
+  - Monitoring catchment now varies per level: `(50 + i*3) / 10000` ha — upper levels have slightly larger catchments.
+  - Trap IDs now use farm-specific codes: `DEMO`, `NAN01`, `NAN02`, `NAN03`, `NAN04` + level number (L01-L10) + trap type code (CD=CheckDam, VB=VetiverBund). Example: `NAN04-L07-CD` = Nan farm 4, Level 7, Check Dam trap.
+  - Removed generic prefix "NA" / "DE" that was used before.
+
+Stage Summary:
+- Dashboard no longer has any "add farm" button — the sidebar "แปลงเกษตร" nav item is the sole entry point.
+- Sediment table column headers clarified:
+  - "พื้นที่กับดักมอนิเตอร์ริ่ง (m²)" = physical monitoring trap area (3-6 m²)
+  - "ความสูงตะกอนสะสม (cm)" = accumulated sediment depth in the trap (5-53 cm)
+- Per-farm trap data is now realistic and unique per farm:
+  - Demo (50 ha): 2 traps, DEMO-L01~L02-CD, area 4.7-6.3 m², depth 5 cm (min, flat)
+  - Tea (32 ha): 9 traps, NAN01-L01~L09-CD, area 3.96-5.24 m², depth 17-26 cm
+  - Coffee (25 ha): 10 traps, NAN02-L01~L10-CD, area 3.66-4.85 m², depth 27-41 cm
+  - Rotation (40 ha): 7 traps, NAN03-L01~L07-CD, area 4.3-5.45 m², depth 9-12 cm
+  - Mixed (28 ha): 10 traps, NAN04-L01~L10-CD, area 3.78-5.02 m², depth 34-53 cm
+- Lint clean, dev server stable, page renders 200 OK.
