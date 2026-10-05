@@ -1,5 +1,6 @@
 "use client";
 
+import { useQuery } from "@tanstack/react-query";
 import { useI18n } from "@/lib/i18n/provider";
 import { SectionHeader } from "./section-header";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -16,10 +17,30 @@ import {
   Eye,
   Settings,
   Sprout,
+  Database,
 } from "lucide-react";
 
 export function GuideSection() {
-  const { t, locale } = useI18n();
+  const { t, locale, fmt } = useI18n();
+
+  // Fetch real system statistics
+  const { data: dashData } = useQuery<{
+    totalFarms: number;
+    totalAreaHa: number;
+    totalSamples: number;
+    estimatedSediment?: { totalSedimentT: number; totalCo2eT: number };
+    creditComparison?: { netCreditsTco2e: number; standard: string }[];
+  }>({
+    queryKey: ["dashboard"],
+    queryFn: async () => {
+      const r = await fetch("/api/dashboard");
+      if (!r.ok) throw new Error("Failed");
+      return r.json();
+    },
+  });
+  const totalCredits = dashData?.creditComparison
+    ? dashData.creditComparison.reduce((s, r) => s + r.netCreditsTco2e, 0)
+    : 0;
 
   const steps =
     locale === "th"
@@ -104,6 +125,57 @@ export function GuideSection() {
   return (
     <div className="space-y-6">
       <SectionHeader titleKey="guide.title" descriptionKey="guide.disclaimer" />
+
+      {/* System statistics card */}
+      {dashData && (
+        <Card className="border-emerald-200 dark:border-emerald-900 bg-gradient-to-br from-emerald-50/60 to-violet-50/40 dark:from-emerald-950/20 dark:to-violet-950/10">
+          <CardHeader className="pb-3">
+            <CardTitle className="flex items-center gap-2 text-base">
+              <Database className="h-4 w-4 text-emerald-600 dark:text-emerald-400" />
+              {locale === "th" ? "สถิติระบบปัจจุบัน" : "Current System Statistics"}
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="grid grid-cols-2 gap-4 sm:grid-cols-5">
+              <div>
+                <div className="flex items-center gap-1 text-xs text-muted-foreground">
+                  <MapPin className="h-3 w-3" /> {locale === "th" ? "แปลง" : "Farms"}
+                </div>
+                <div className="text-2xl font-bold tabular-nums">{fmt(dashData.totalFarms)}</div>
+              </div>
+              <div>
+                <div className="flex items-center gap-1 text-xs text-muted-foreground">
+                  <Layers3 className="h-3 w-3" /> {locale === "th" ? "พื้นที่รวม" : "Total area"}
+                </div>
+                <div className="text-2xl font-bold tabular-nums">{fmt(dashData.totalAreaHa, { maximumFractionDigits: 0 })} ha</div>
+              </div>
+              <div>
+                <div className="flex items-center gap-1 text-xs text-muted-foreground">
+                  <TestTube2 className="h-3 w-3" /> {locale === "th" ? "ตัวอย่างดิน" : "Samples"}
+                </div>
+                <div className="text-2xl font-bold tabular-nums">{fmt(dashData.totalSamples)}</div>
+              </div>
+              <div>
+                <div className="flex items-center gap-1 text-xs text-muted-foreground">
+                  <Layers3 className="h-3 w-3" /> {locale === "th" ? "ตะกอนดักไว้" : "Sediment"}
+                </div>
+                <div className="text-2xl font-bold tabular-nums text-amber-600 dark:text-amber-400">
+                  {fmt(dashData.estimatedSediment?.totalSedimentT ?? 0, { maximumFractionDigits: 0 })} t
+                </div>
+              </div>
+              <div>
+                <div className="flex items-center gap-1 text-xs text-muted-foreground">
+                  <Calculator className="h-3 w-3" /> {locale === "th" ? "เครดิตรวม" : "Credits"}
+                </div>
+                <div className="text-2xl font-bold tabular-nums text-emerald-600 dark:text-emerald-400">
+                  {fmt(totalCredits, { maximumFractionDigits: 0 })}
+                </div>
+                <div className="text-[10px] text-muted-foreground">tCO₂e</div>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       <Card>
         <CardHeader>

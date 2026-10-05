@@ -1,0 +1,1175 @@
+     1→"use client";
+     2→
+     3→import { useState } from "react";
+     4→import { useI18n } from "@/lib/i18n/provider";
+     5→import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+     6→import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+     7→import { Button } from "@/components/ui/button";
+     8→import { Input } from "@/components/ui/input";
+     9→import { Label } from "@/components/ui/label";
+    10→import { Badge } from "@/components/ui/badge";
+    11→import { Skeleton } from "@/components/ui/skeleton";
+    12→import { Slider } from "@/components/ui/slider";
+    13→import { Switch } from "@/components/ui/switch";
+    14→import { useToast } from "@/hooks/use-toast";
+    15→import {
+    16→  Table,
+    17→  TableBody,
+    18→  TableCell,
+    19→  TableHead,
+    20→  TableHeader,
+    21→  TableRow,
+    22→} from "@/components/ui/table";
+    23→import {
+    24→  Calculator as CalcIcon,
+    25→  Plus,
+    26→  Trash2,
+    27→  Layers3,
+    28→  Banknote,
+    29→  TestTube2,
+    30→  Network,
+    31→  TrendingUp,
+    32→  Sparkles,
+    33→  ArrowUpRight,
+    34→  ArrowDownRight,
+    35→  Flame,
+    36→} from "lucide-react";
+    37→import { STANDARD_LIST } from "@/lib/core/standards";
+    38→import { type CreditResult, computeBiocharCredits } from "@/lib/core/credits";
+    39→import type { FinanceResult } from "@/lib/core/finance";
+    40→import {
+    41→  Bar,
+    42→  BarChart,
+    43→  CartesianGrid,
+    44→  Cell,
+    45→  ComposedChart,
+    46→  Legend,
+    47→  Line,
+    48→  ResponsiveContainer,
+    49→  Tooltip,
+    50→  XAxis,
+    51→  YAxis,
+    52→} from "recharts";
+    53→
+    54→export function CalculatorSection() {
+    55→  const { t, locale } = useI18n();
+    56→  return (
+    57→    <div className="space-y-6">
+    58→      <div className="space-y-1">
+    59→        <h2 className="text-2xl font-semibold tracking-tight">{t("calc.title")}</h2>
+    60→        <p className="text-sm text-muted-foreground">{t("warn.estimate")}</p>
+    61→      </div>
+    62→
+    63→      <Tabs defaultValue="credits" className="w-full">
+    64→        <TabsList className="grid w-full grid-cols-2 sm:grid-cols-5">
+    65→          <TabsTrigger value="credits" className="gap-1.5">
+    66→            <CalcIcon className="h-3.5 w-3.5" /> {t("calc.tab.credits")}
+    67→          </TabsTrigger>
+    68→          <TabsTrigger value="soc" className="gap-1.5">
+    69→            <Layers3 className="h-3.5 w-3.5" /> {t("calc.tab.soc")}
+    70→          </TabsTrigger>
+    71→          <TabsTrigger value="finance" className="gap-1.5">
+    72→            <Banknote className="h-3.5 w-3.5" /> {t("calc.tab.finance")}
+    73→          </TabsTrigger>
+    74→          <TabsTrigger value="samples" className="gap-1.5">
+    75→            <TestTube2 className="h-3.5 w-3.5" /> {t("calc.tab.samples")}
+    76→          </TabsTrigger>
+    77→          <TabsTrigger value="aggregation" className="gap-1.5">
+    78→            <Network className="h-3.5 w-3.5" /> {t("calc.tab.aggregation")}
+    79→          </TabsTrigger>
+    80→        </TabsList>
+    81→        {/* key=locale forces a clean remount when language toggles, so the
+    82→            input fields re-initialise with the locale-appropriate default unit
+    83→            (ha for EN, rai for TH) and previous results are cleared. */}
+    84→        <TabsContent value="credits" className="mt-4" key={`credits-${locale}`}>
+    85→          <CreditsTab />
+    86→        </TabsContent>
+    87→        <TabsContent value="soc" className="mt-4" key={`soc-${locale}`}>
+    88→          <SocStockTab />
+    89→        </TabsContent>
+    90→        <TabsContent value="finance" className="mt-4" key={`finance-${locale}`}>
+    91→          <FinanceTab />
+    92→        </TabsContent>
+    93→        <TabsContent value="samples" className="mt-4" key={`samples-${locale}`}>
+    94→          <SampleAdequacyTab />
+    95→        </TabsContent>
+    96→        <TabsContent value="aggregation" className="mt-4" key={`agg-${locale}`}>
+    97→          <AggregationTab />
+    98→        </TabsContent>
+    99→      </Tabs>
+   100→    </div>
+   101→  );
+   102→}
+   103→
+   104→// -------- Credits Tab --------
+   105→function CreditsTab() {
+   106→  const { t, fmt, fmtArea, isThai, haToRai, raiToHa } = useI18n();
+   107→  const { toast } = useToast();
+   108→  const [baseline, setBaseline] = useState("32.4");
+   109→  const [current, setCurrent] = useState("36.9");
+   110→  const [years, setYears] = useState("5");
+   111→  // area shown in locale unit (rai for TH, ha for EN). Default 50 ha = 312.5 rai.
+   112→  const [area, setArea] = useState(isThai ? "312.5" : "50");
+   113→  const [fertiliser, setFertiliser] = useState("60");
+   114→  const [flooded, setFlooded] = useState("0");
+   115→  const [diesel, setDiesel] = useState("0");
+   116→  const [leakage, setLeakage] = useState("15");
+   117→  const [samples, setSamples] = useState("31.8, 33.2, 32.0, 34.1, 31.5");
+   118→  // Biochar state
+   119→  const [biocharEnabled, setBiocharEnabled] = useState(false);
+   120→  // Biochar rate in locale unit (rai for TH, ha for EN). Default 2 t/rai = 12.5 t/ha.
+   121→  const [biocharRate, setBiocharRate] = useState(isThai ? "2" : "12.5");
+   122→  const [biocharCarbonPct, setBiocharCarbonPct] = useState("70");
+   123→  const [biocharStability, setBiocharStability] = useState("0.8");
+   124→  const [biocharSource, setBiocharSource] = useState<"riceHusk" | "wood" | "cornCob" | "manure">("riceHusk");
+   125→  const [comparison, setComparison] = useState<CreditResult[] | null>(null);
+   126→  const [loading, setLoading] = useState(false);
+   127→
+   128→  async function compute() {
+   129→    setLoading(true);
+   130→    try {
+   131→      const areaHa = isThai ? raiToHa(Number(area)) : Number(area);
+   132→      const biocharRateTPerHa = biocharEnabled
+   133→        ? isThai
+   134→          ? raiToHa(Number(biocharRate))
+   135→          : Number(biocharRate)
+   136→        : 0;
+   137→      const body = {
+   138→        socBaselineTHa: Number(baseline),
+   139→        socCurrentTHa: Number(current),
+   140→        years: Number(years),
+   141→        areaHa,
+   142→        nFertiliserKgHaYr: Number(fertiliser) || 0,
+   143→        floodedDaysYr: Number(flooded) || 0,
+   144→        dieselLitreTotal: Number(diesel) || 0,
+   145→        leakageTco2e: Number(leakage) || 0,
+   146→        socSamples: samples
+   147→          .split(/[,\s]+/)
+   148→          .map((s) => Number(s))
+   149→          .filter((n) => !Number.isNaN(n) && n > 0),
+   150→        // Biochar inputs (only when enabled)
+   151→        biocharRateTPerHa,
+   152→        biocharCarbonPct: Number(biocharCarbonPct) || 70,
+   153→        biocharStabilityFactor: Number(biocharStability) || 0.8,
+   154→      };
+   155→      const res = await fetch("/api/calculate/credits", {
+   156→        method: "POST",
+   157→        headers: { "Content-Type": "application/json" },
+   158→        body: JSON.stringify(body),
+   159→      });
+   160→      if (!res.ok) {
+   161→        const err = await res.json().catch(() => ({}));
+   162→        throw new Error(err.error || "Failed");
+   163→      }
+   164→      const data = await res.json();
+   165→      setComparison(data.comparison ?? [data.result]);
+   166→    } catch (e) {
+   167→      const msg = e instanceof Error ? e.message : "Failed";
+   168→      toast({ title: t("common.error"), description: msg, variant: "destructive" });
+   169→    } finally {
+   170→      setLoading(false);
+   171→    }
+   172→  }
+   173→
+   174→  // Live biochar preview
+   175→  const areaHa = isThai ? raiToHa(Number(area)) : Number(area);
+   176→  const biocharRateTPerHa = biocharEnabled
+   177→    ? isThai
+   178→      ? raiToHa(Number(biocharRate))
+   179→      : Number(biocharRate)
+   180→    : 0;
+   181→  const biocharPreview = biocharEnabled && biocharRateTPerHa > 0
+   182→    ? computeBiocharCredits({
+   183→        areaHa,
+   184→        rateTPerHa: biocharRateTPerHa,
+   185→        carbonPct: Number(biocharCarbonPct) || 70,
+   186→        stabilityFactor: Number(biocharStability) || 0.8,
+   187→      })
+   188→    : { cStockT: 0, co2eT: 0 };
+   189→  // Per-area preview (for the live preview card)
+   190→  const biocharPreviewPerHa = computeBiocharCredits({
+   191→    areaHa: 1,
+   192→    rateTPerHa: biocharRateTPerHa,
+   193→    carbonPct: Number(biocharCarbonPct) || 70,
+   194→    stabilityFactor: Number(biocharStability) || 0.8,
+   195→  });
+   196→
+   197→  return (
+   198→    <div className="grid gap-4 lg:grid-cols-5">
+   199→      <Card className="lg:col-span-2">
+   200→        <CardHeader>
+   201→          <CardTitle className="text-base">{t("calc.credits.compare")}</CardTitle>
+   202→        </CardHeader>
+   203→        <CardContent className="space-y-3">
+   204→          <div className="grid grid-cols-2 gap-3">
+   205→            <Field label={t("calc.credits.baseline")} value={baseline} onChange={setBaseline} />
+   206→            <Field label={t("calc.credits.current")} value={current} onChange={setCurrent} />
+   207→            <Field label={t("calc.credits.years")} value={years} onChange={setYears} />
+   208→            <Field label={isThai ? t("farms.areaRai") : t("calc.credits.area")} value={area} onChange={setArea} />
+   209→            <Field label={t("calc.credits.fertiliser")} value={fertiliser} onChange={setFertiliser} />
+   210→            <Field label={t("calc.credits.flooded")} value={flooded} onChange={setFlooded} />
+   211→            <Field label={t("calc.credits.diesel")} value={diesel} onChange={setDiesel} />
+   212→            <Field label={t("calc.credits.leakage")} value={leakage} onChange={setLeakage} />
+   213→          </div>
+   214→          <div className="space-y-1.5">
+   215→            <Label>{t("calc.credits.samples")}</Label>
+   216→            <Input value={samples} onChange={(e) => setSamples(e.target.value)} className="font-mono text-xs" />
+   217→          </div>
+   218→
+   219→          {/* Biochar panel */}
+   220→          <div className="rounded-md border border-amber-300 dark:border-amber-800 bg-amber-50/40 dark:bg-amber-950/20 p-3 space-y-3">
+   221→            <div className="flex items-center justify-between">
+   222→              <div className="flex items-center gap-2">
+   223→                <Flame className="h-4 w-4 text-amber-600 dark:text-amber-400" />
+   224→                <span className="text-sm font-medium">{t("calc.biochar.title")}</span>
+   225→              </div>
+   226→              <label className="flex items-center gap-1.5 cursor-pointer">
+   227→                <span className="text-xs text-muted-foreground">{t("calc.biochar.enable")}</span>
+   228→                <Switch checked={biocharEnabled} onCheckedChange={setBiocharEnabled} aria-label={t("calc.biochar.enable")} />
+   229→              </label>
+   230→            </div>
+   231→
+   232→            <div className={biocharEnabled ? "space-y-3" : "space-y-3 opacity-50 pointer-events-none"}>
+   233→              <div className="grid grid-cols-2 gap-2">
+   234→                <Field
+   235→                  label={isThai ? t("calc.biochar.rate") : t("calc.biochar.rateHa")}
+   236→                  value={biocharRate}
+   237→                  onChange={setBiocharRate}
+   238→                />
+   239→                <div className="space-y-1.5">
+   240→                  <Label className="text-xs">{t("calc.biochar.source")}</Label>
+   241→                  <select
+   242→                    value={biocharSource}
+   243→                    onChange={(e) => setBiocharSource(e.target.value as typeof biocharSource)}
+   244→                    className="flex h-9 w-full rounded-md border border-input bg-background px-3 py-2 text-sm shadow-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+   245→                  >
+   246→                    <option value="riceHusk">{t("calc.biochar.riceHusk")}</option>
+   247→                    <option value="wood">{t("calc.biochar.wood")}</option>
+   248→                    <option value="cornCob">{t("calc.biochar.cornCob")}</option>
+   249→                    <option value="manure">{t("calc.biochar.manure")}</option>
+   250→                  </select>
+   251→                </div>
+   252→                <Field
+   253→                  label={t("calc.biochar.carbonPct")}
+   254→                  value={biocharCarbonPct}
+   255→                  onChange={setBiocharCarbonPct}
+   256→                />
+   257→                <Field
+   258→                  label={t("calc.biochar.stability")}
+   259→                  value={biocharStability}
+   260→                  onChange={setBiocharStability}
+   261→                />
+   262→              </div>
+   263→              <p className="text-[10px] text-muted-foreground leading-relaxed">
+   264→                {t("calc.biochar.stabilityHint")}
+   265→              </p>
+   266→
+   267→              {/* Live biochar preview */}
+   268→              {biocharEnabled && biocharPreview.co2eT > 0 && (
+   269→                <div className="rounded-md bg-gradient-to-br from-amber-50 to-emerald-50 dark:from-amber-950/30 dark:to-emerald-950/30 p-2.5 grid grid-cols-2 gap-2 text-xs">
+   270→                  <div>
+   271→                    <div className="text-muted-foreground">{isThai ? t("calc.biochar.cPerHa") : "C/ha"}</div>
+   272→                    <div className="font-semibold tabular-nums text-emerald-600 dark:text-emerald-400">
+   273→                      {fmt(biocharPreviewPerHa.cStockT, { maximumFractionDigits: 3 })} t C
+   274→                    </div>
+   275→                  </div>
+   276→                  <div>
+   277→                    <div className="text-muted-foreground">{isThai ? t("calc.biochar.co2ePerHa") : "CO₂e/ha"}</div>
+   278→                    <div className="font-semibold tabular-nums text-amber-600 dark:text-amber-400">
+   279→                      {fmt(biocharPreviewPerHa.co2eT, { maximumFractionDigits: 3 })} tCO₂e
+   280→                    </div>
+   281→                  </div>
+   282→                  <div className="col-span-2 border-t pt-1.5">
+   283→                    <div className="text-muted-foreground">{t("calc.biochar.totalCo2e")}</div>
+   284→                    <div className="font-bold tabular-nums text-base text-amber-700 dark:text-amber-300">
+   285→                      {fmt(biocharPreview.co2eT, { maximumFractionDigits: 1 })} tCO₂e
+   286→                    </div>
+   287→                    <div className="text-[10px] text-muted-foreground">
+   288→                      {fmt(biocharPreview.cStockT, { maximumFractionDigits: 1 })} t C × 44/12
+   289→                    </div>
+   290→                  </div>
+   291→                </div>
+   292→              )}
+   293→            </div>
+   294→          </div>
+   295→
+   296→          <Button onClick={compute} disabled={loading} className="w-full gap-2">
+   297→            <CalcIcon className="h-4 w-4" /> {loading ? t("common.loading") : t("calc.credits.compare")}
+   298→          </Button>
+   299→          <p className="text-xs text-muted-foreground">{t("warn.estimate")}</p>
+   300→        </CardContent>
+   301→      </Card>
+   302→
+   303→      <Card className="lg:col-span-3">
+   304→        <CardHeader>
+   305→          <CardTitle className="text-base">{t("calc.credits.result")}</CardTitle>
+   306→        </CardHeader>
+   307→        <CardContent>
+   308→          {!comparison ? (
+   309→            <div className="flex h-72 items-center justify-center text-sm text-muted-foreground">
+   310→              {t("common.none")}
+   311→            </div>
+   312→          ) : (
+   313→            <div className="space-y-4">
+   314→              <div className="h-64">
+   315→                <ResponsiveContainer width="100%" height="100%">
+   316→                  <BarChart data={comparison}>
+   317→                    <CartesianGrid strokeDasharray="3 3" vertical={false} />
+   318→                    <XAxis dataKey="standard" tick={{ fontSize: 12 }} />
+   319→                    <YAxis tick={{ fontSize: 12 }} tickFormatter={(v) => fmt(Number(v), { maximumFractionDigits: 0 })} />
+   320→                    <Tooltip formatter={(v: number) => fmt(v, { maximumFractionDigits: 2 })} />
+   321→                    <Legend />
+   322→                    <Bar dataKey="grossCo2e" name="Gross" fill="#94a3b8" radius={[4, 4, 0, 0]} barSize={18} />
+   323→                    <Bar dataKey="projectEmissionsCo2e" name="Emissions" fill="#ef4444" radius={[4, 4, 0, 0]} barSize={18} />
+   324→                    <Bar dataKey="netCreditsTco2e" name="Net" radius={[4, 4, 0, 0]} barSize={18}>
+   325→                      {comparison.map((r) => {
+   326→                        const rule = STANDARD_LIST.find((s) => s.code === r.standard);
+   327→                        return <Cell key={r.standard} fill={rule?.accent ?? "#16a34a"} />;
+   328→                      })}
+   329→                    </Bar>
+   330→                  </BarChart>
+   331→                </ResponsiveContainer>
+   332→              </div>
+   333→
+   334→              <div className="overflow-x-auto">
+   335→                <Table>
+   336→                  <TableHeader>
+   337→                    <TableRow>
+   338→                      <TableHead>{t("standards.code")}</TableHead>
+   339→                      <TableHead className="text-right">ΔSOC</TableHead>
+   340→                      <TableHead className="text-right">{t("credit.gross")}</TableHead>
+   341→                      {comparison.some((r) => r.biocharCo2eT > 0) && (
+   342→                        <TableHead className="text-right text-amber-700 dark:text-amber-300">
+   343→                          <Flame className="inline h-3 w-3 mr-1" />
+   344→                          {isThai ? "Biochar" : "Biochar"}
+   345→                        </TableHead>
+   346→                      )}
+   347→                      <TableHead className="text-right">Emissions</TableHead>
+   348→                      <TableHead className="text-right">Buffer</TableHead>
+   349→                      <TableHead className="text-right">{t("credit.net")}</TableHead>
+   350→                      <TableHead className="text-right">/yr</TableHead>
+   351→                    </TableRow>
+   352→                  </TableHeader>
+   353→                  <TableBody>
+   354→                    {comparison.map((r) => {
+   355→                      const rule = STANDARD_LIST.find((s) => s.code === r.standard);
+   356→                      const hasBiochar = comparison.some((x) => x.biocharCo2eT > 0);
+   357→                      return (
+   358→                        <TableRow key={r.standard}>
+   359→                          <TableCell>
+   360→                            <div className="flex items-center gap-2">
+   361→                              <span
+   362→                                className="h-2.5 w-2.5 rounded-full"
+   363→                                style={{ background: rule?.accent }}
+   364→                              />
+   365→                              <span className="font-medium">{r.standard}</span>
+   366→                            </div>
+   367→                          </TableCell>
+   368→                          <TableCell className="text-right tabular-nums">
+   369→                            {fmt(r.deltaSocTCPerHaYr)}
+   370→                          </TableCell>
+   371→                          <TableCell className="text-right tabular-nums">
+   372→                            {fmt(r.grossCo2e)}
+   373→                          </TableCell>
+   374→                          {hasBiochar && (
+   375→                            <TableCell className="text-right tabular-nums text-amber-700 dark:text-amber-300">
+   376→                              {r.biocharCo2eT > 0 ? `+${fmt(r.biocharCo2eT)}` : "—"}
+   377→                            </TableCell>
+   378→                          )}
+   379→                          <TableCell className="text-right tabular-nums text-red-600 dark:text-red-400">
+   380→                            -{fmt(r.projectEmissionsCo2e)}
+   381→                          </TableCell>
+   382→                          <TableCell className="text-right tabular-nums text-amber-600 dark:text-amber-400">
+   383→                            -{fmt(r.bufferCo2e)} ({r.bufferPct}%)
+   384→                          </TableCell>
+   385→                          <TableCell className="text-right tabular-nums font-semibold text-emerald-600 dark:text-emerald-400">
+   386→                            {fmt(r.netCreditsTco2e)}
+   387→                          </TableCell>
+   388→                          <TableCell className="text-right tabular-nums">
+   389→                            {fmt(r.annualCreditsTco2e)}
+   390→                          </TableCell>
+   391→                        </TableRow>
+   392→                      );
+   393→                    })}
+   394→                  </TableBody>
+   395→                </Table>
+   396→              </div>
+   397→
+   398→              <div className="grid gap-2 sm:grid-cols-2 text-xs">
+   399→                <div className="rounded-md bg-muted/60 p-2.5">
+   400→                  <div className="text-muted-foreground">{t("credit.uncertainty")}</div>
+   401→                  <div className="font-medium tabular-nums">
+   402→                    {comparison[0]?.uncertaintyPct ?? 0}% (
+   403→                    {comparison[0]?.uncertaintyDeductionPct ?? 0}% ded.)
+   404→                  </div>
+   405→                </div>
+   406→                <div className="rounded-md bg-muted/60 p-2.5">
+   407→                  <div className="text-muted-foreground">Leakage</div>
+   408→                  <div className="font-medium tabular-nums">
+   409→                    -{fmt(comparison[0]?.leakageCo2e ?? 0)} {t("unit.tco2e")}
+   410→                  </div>
+   411→                </div>
+   412→              </div>
+   413→            </div>
+   414→          )}
+   415→        </CardContent>
+   416→      </Card>
+   417→    </div>
+   418→  );
+   419→}
+   420→
+   421→// -------- SOC Stock Tab --------
+   422→interface LayerState {
+   423→  socPct: string;
+   424→  bulkDensity: string;
+   425→  depthCm: string;
+   426→  coarseFragPct: string;
+   427→}
+   428→
+   429→function SocStockTab() {
+   430→  const { t, fmt } = useI18n();
+   431→  const [layers, setLayers] = useState<LayerState[]>([
+   432→    { socPct: "1.85", bulkDensity: "1.35", depthCm: "30", coarseFragPct: "5" },
+   433→  ]);
+   434→  const [result, setResult] = useState<{ socStockTCPerHa: number; co2eTPerHa: number; byLayer: { depthCm: number; stockTCPerHa: number }[] } | null>(null);
+   435→  const [loading, setLoading] = useState(false);
+   436→
+   437→  function addLayer() {
+   438→    setLayers([...layers, { socPct: "", bulkDensity: "1.35", depthCm: "10", coarseFragPct: "0" }]);
+   439→  }
+   440→  function removeLayer(i: number) {
+   441→    setLayers(layers.filter((_, idx) => idx !== i));
+   442→  }
+   443→  function update(i: number, key: keyof LayerState, v: string) {
+   444→    setLayers(layers.map((l, idx) => (idx === i ? { ...l, [key]: v } : l)));
+   445→  }
+   446→
+   447→  async function compute() {
+   448→    setLoading(true);
+   449→    try {
+   450→      const body = {
+   451→        layers: layers.map((l) => ({
+   452→          socPct: Number(l.socPct),
+   453→          bulkDensity: Number(l.bulkDensity),
+   454→          depthCm: Number(l.depthCm),
+   455→          coarseFragPct: Number(l.coarseFragPct) || 0,
+   456→        })),
+   457→      };
+   458→      const res = await fetch("/api/calculate/soc-stock", {
+   459→        method: "POST",
+   460→        headers: { "Content-Type": "application/json" },
+   461→        body: JSON.stringify(body),
+   462→      });
+   463→      if (!res.ok) throw new Error("Failed");
+   464→      setResult(await res.json());
+   465→    } finally {
+   466→      setLoading(false);
+   467→    }
+   468→  }
+   469→
+   470→  return (
+   471→    <div className="grid gap-4 lg:grid-cols-5">
+   472→      <Card className="lg:col-span-3">
+   473→        <CardHeader>
+   474→          <CardTitle className="text-base flex items-center justify-between">
+   475→            <span>{t("calc.soc.layers")}</span>
+   476→            <Button variant="outline" size="sm" onClick={addLayer} className="gap-1.5">
+   477→              <Plus className="h-3.5 w-3.5" /> {t("calc.soc.addLayer")}
+   478→            </Button>
+   479→          </CardTitle>
+   480→        </CardHeader>
+   481→        <CardContent className="space-y-3">
+   482→          {layers.map((l, i) => (
+   483→            <div key={i} className="rounded-md border p-3">
+   484→              <div className="mb-2 flex items-center justify-between">
+   485→                <Badge variant="secondary">Layer {i + 1}</Badge>
+   486→                <Button
+   487→                  variant="ghost"
+   488→                  size="icon"
+   489→                  className="h-7 w-7 text-destructive"
+   490→                  onClick={() => removeLayer(i)}
+   491→                  aria-label="Remove layer"
+   492→                >
+   493→                  <Trash2 className="h-3.5 w-3.5" />
+   494→                </Button>
+   495→              </div>
+   496→              <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+   497→                <Field label={t("samples.socPct")} value={l.socPct} onChange={(v) => update(i, "socPct", v)} />
+   498→                <Field label={t("samples.bulkDensity")} value={l.bulkDensity} onChange={(v) => update(i, "bulkDensity", v)} />
+   499→                <Field label={t("samples.depth")} value={l.depthCm} onChange={(v) => update(i, "depthCm", v)} />
+   500→                <Field label={t("samples.coarseFrag")} value={l.coarseFragPct} onChange={(v) => update(i, "coarseFragPct", v)} />
+   501→              </div>
+   502→            </div>
+   503→          ))}
+   504→          <Button onClick={compute} disabled={loading} className="w-full gap-2">
+   505→            <CalcIcon className="h-4 w-4" /> {t("calc.credits.compare")}
+   506→          </Button>
+   507→        </CardContent>
+   508→      </Card>
+   509→
+   510→      <Card className="lg:col-span-2">
+   511→        <CardHeader>
+   512→          <CardTitle className="text-base">{t("calc.soc.result")}</CardTitle>
+   513→        </CardHeader>
+   514→        <CardContent>
+   515→          {!result ? (
+   516→            <div className="flex h-72 items-center justify-center text-sm text-muted-foreground">
+   517→              {t("common.none")}
+   518→            </div>
+   519→          ) : (
+   520→            <div className="space-y-4">
+   521→              <div className="grid grid-cols-2 gap-3">
+   522→                <div className="rounded-md bg-emerald-50/60 dark:bg-emerald-950/20 p-3">
+   523→                  <div className="text-xs text-muted-foreground">{t("calc.soc.stock")}</div>
+   524→                  <div className="text-2xl font-semibold tabular-nums">
+   525→                    {fmt(result.socStockTCPerHa)}
+   526→                  </div>
+   527→                  <div className="text-xs text-muted-foreground">{t("unit.tcPerHa")}</div>
+   528→                </div>
+   529→                <div className="rounded-md bg-violet-50/60 dark:bg-violet-950/20 p-3">
+   530→                  <div className="text-xs text-muted-foreground">{t("calc.soc.co2e")}</div>
+   531→                  <div className="text-2xl font-semibold tabular-nums">
+   532→                    {fmt(result.co2eTPerHa)}
+   533→                  </div>
+   534→                  <div className="text-xs text-muted-foreground">{t("unit.tco2e")}</div>
+   535→                </div>
+   536→              </div>
+   537→              <div>
+   538→                <h4 className="text-sm font-medium mb-2">{t("calc.soc.layers")}</h4>
+   539→                <Table>
+   540→                  <TableHeader>
+   541→                    <TableRow>
+   542→                      <TableHead>{t("samples.depth")}</TableHead>
+   543→                      <TableHead className="text-right">{t("calc.soc.stock")}</TableHead>
+   544→                    </TableRow>
+   545→                  </TableHeader>
+   546→                  <TableBody>
+   547→                    {result.byLayer.map((l, i) => (
+   548→                      <TableRow key={i}>
+   549→                        <TableCell className="text-sm tabular-nums">{l.depthCm} cm</TableCell>
+   550→                        <TableCell className="text-right text-sm tabular-nums">
+   551→                          {fmt(l.stockTCPerHa)}
+   552→                        </TableCell>
+   553→                      </TableRow>
+   554→                    ))}
+   555→                  </TableBody>
+   556→                </Table>
+   557→              </div>
+   558→            </div>
+   559→          )}
+   560→        </CardContent>
+   561→      </Card>
+   562→    </div>
+   563→  );
+   564→}
+   565→
+   566→// -------- Finance Tab --------
+   567→function FinanceTab() {
+   568→  const { t, fmt, isThai, raiToHa } = useI18n();
+   569→  const [annualCredits, setAnnualCredits] = useState("125.6");
+   570→  const [price, setPrice] = useState("350");
+   571→  const [capex, setCapex] = useState("4500");
+   572→  const [opex, setOpex] = useState("800");
+   573→  const [verifyCost, setVerifyCost] = useState("150000");
+   574→  const [verifyEvery, setVerifyEvery] = useState("3");
+   575→  const [years, setYears] = useState("10");
+   576→  const [discount, setDiscount] = useState("8");
+   577→  const [cobenefit, setCobenefit] = useState("1200");
+   578→  const [area, setArea] = useState(isThai ? "312.5" : "50");
+   579→
+   580→  // dMRV adjustment state
+   581→  const [dmrvEnabled, setDmrvEnabled] = useState(true);
+   582→  const [dmrvReduction, setDmrvReduction] = useState("50"); // % of verifier's on-site time saved
+   583→  const [dmrvPremium, setDmrvPremium] = useState("10"); // % credit price uplift
+   584→
+   585→  const [result, setResult] = useState<FinanceResult | null>(null);
+   586→  const [baselineResult, setBaselineResult] = useState<FinanceResult | null>(null);
+   587→  const [loading, setLoading] = useState(false);
+   588→
+   589→  // Live-compute the adjusted values for the preview block
+   590→  const baseVerify = Number(verifyCost) || 0;
+   591→  const basePrice = Number(price) || 0;
+   592→  const reductionPct = Number(dmrvReduction) || 0;
+   593→  const premiumPct = Number(dmrvPremium) || 0;
+   594→  const adjVerify = dmrvEnabled ? baseVerify * (1 - reductionPct / 100) : baseVerify;
+   595→  const adjPrice = dmrvEnabled ? basePrice * (1 + premiumPct / 100) : basePrice;
+   596→  const verifySave = baseVerify - adjVerify;
+   597→  const priceAdd = adjPrice - basePrice;
+   598→
+   599→  const verifyCycles = Math.max(1, Math.floor(Number(years) / Math.max(1, Number(verifyEvery))));
+   600→  const totalVerifySave = verifySave * verifyCycles;
+   601→  const totalPremiumRev = priceAdd * Number(annualCredits) * Number(years);
+   602→
+   603→  async function compute() {
+   604→    setLoading(true);
+   605→    try {
+   606→      const areaHa = isThai ? raiToHa(Number(area)) : Number(area);
+   607→      const baseBody = {
+   608→        areaHa,
+   609→        annualCreditsTco2e: Number(annualCredits),
+   610→        pricePerTco2e: basePrice,
+   611→        capexPerHa: Number(capex),
+   612→        opexPerHaYr: Number(opex),
+   613→        verificationCost: baseVerify,
+   614→        verificationEveryYr: Number(verifyEvery),
+   615→        years: Number(years),
+   616→        discountRate: Number(discount) / 100,
+   617→        cobenefitThbHaYr: Number(cobenefit),
+   618→      };
+   619→      const adjustedBody = {
+   620→        ...baseBody,
+   621→        pricePerTco2e: adjPrice,
+   622→        verificationCost: adjVerify,
+   623→      };
+   624→      // Run both: baseline (no dMRV) and adjusted (with dMRV)
+   625→      const [baseRes, adjRes] = await Promise.all([
+   626→        fetch("/api/calculate/financial", {
+   627→          method: "POST",
+   628→          headers: { "Content-Type": "application/json" },
+   629→          body: JSON.stringify(baseBody),
+   630→        }),
+   631→        fetch("/api/calculate/financial", {
+   632→          method: "POST",
+   633→          headers: { "Content-Type": "application/json" },
+   634→          body: JSON.stringify(adjustedBody),
+   635→        }),
+   636→      ]);
+   637→      if (!baseRes.ok || !adjRes.ok) throw new Error("Failed");
+   638→      const [baseData, adjData] = await Promise.all([baseRes.json(), adjRes.json()]);
+   639→      setBaselineResult(baseData.result);
+   640→      setResult(adjData.result);
+   641→    } finally {
+   642→      setLoading(false);
+   643→    }
+   644→  }
+   645→
+   646→  return (
+   647→    <div className="space-y-4">
+   648→      {/* dMRV adjustment explainer */}
+   649→      <Card className="border-emerald-300 bg-emerald-50/40 dark:bg-emerald-950/20">
+   650→        <CardContent className="flex items-start gap-3 py-3">
+   651→          <Sparkles className="h-5 w-5 text-emerald-600 dark:text-emerald-400 shrink-0 mt-0.5" />
+   652→          <div className="text-sm space-y-1">
+   653→            <p className="font-medium">{t("calc.fin.dmrvDescTitle")}</p>
+   654→            <p className="text-xs text-muted-foreground leading-relaxed">{t("calc.fin.dmrvDesc")}</p>
+   655→          </div>
+   656→        </CardContent>
+   657→      </Card>
+   658→
+   659→      <div className="grid gap-4 lg:grid-cols-5">
+   660→        <Card className="lg:col-span-2">
+   661→          <CardHeader>
+   662→            <CardTitle className="text-base">{t("calc.fin.cashflow")}</CardTitle>
+   663→          </CardHeader>
+   664→          <CardContent className="space-y-3">
+   665→            <div className="grid grid-cols-2 gap-3">
+   666→              <Field label={isThai ? t("farms.areaRai") : t("calc.credits.area")} value={area} onChange={setArea} />
+   667→              <Field label={`${t("credit.net")}/yr (${t("unit.tco2e")})`} value={annualCredits} onChange={setAnnualCredits} />
+   668→              <Field label={t("calc.fin.price")} value={price} onChange={setPrice} />
+   669→              <Field label={t("calc.fin.capex")} value={capex} onChange={setCapex} />
+   670→              <Field label={t("calc.fin.opex")} value={opex} onChange={setOpex} />
+   671→              <Field label={t("calc.fin.verifyCost")} value={verifyCost} onChange={setVerifyCost} />
+   672→              <Field label={t("calc.fin.verifyEvery")} value={verifyEvery} onChange={setVerifyEvery} />
+   673→              <Field label={t("calc.fin.years")} value={years} onChange={setYears} />
+   674→              <Field label={t("calc.fin.discount")} value={discount} onChange={setDiscount} />
+   675→              <Field label={t("calc.fin.cobenefit")} value={cobenefit} onChange={setCobenefit} />
+   676→            </div>
+   677→            <Button onClick={compute} disabled={loading} className="w-full gap-2">
+   678→              <TrendingUp className="h-4 w-4" /> {loading ? t("common.loading") : t("calc.fin.compute")}
+   679→            </Button>
+   680→          </CardContent>
+   681→        </Card>
+   682→
+   683→        {/* dMRV adjustment panel */}
+   684→        <Card className="lg:col-span-3 border-emerald-200 dark:border-emerald-900">
+   685→          <CardHeader className="pb-3">
+   686→            <div className="flex items-center justify-between">
+   687→              <CardTitle className="flex items-center gap-2 text-base">
+   688→                <Sparkles className="h-4 w-4 text-emerald-600 dark:text-emerald-400" />
+   689→                {t("calc.fin.dmrvTitle")}
+   690→              </CardTitle>
+   691→              <label className="flex items-center gap-2 cursor-pointer">
+   692→                <span className="text-xs text-muted-foreground">{t("calc.fin.dmrvEnable")}</span>
+   693→                <Switch checked={dmrvEnabled} onCheckedChange={setDmrvEnabled} aria-label={t("calc.fin.dmrvEnable")} />
+   694→              </label>
+   695→            </div>
+   696→          </CardHeader>
+   697→          <CardContent className={dmrvEnabled ? "space-y-4" : "space-y-4 opacity-50 pointer-events-none"}>
+   698→            <div className="grid gap-4 sm:grid-cols-2">
+   699→              {/* Reduction slider */}
+   700→              <div className="space-y-2">
+   701→                <div className="flex items-center justify-between">
+   702→                  <Label className="text-xs font-medium">{t("calc.fin.dmrvReduction")}</Label>
+   703→                  <span className="text-sm font-semibold tabular-nums text-emerald-600 dark:text-emerald-400">
+   704→                    {reductionPct}%
+   705→                  </span>
+   706→                </div>
+   707→                <Slider
+   708→                  value={[reductionPct]}
+   709→                  onValueChange={(v) => setDmrvReduction(String(v[0]))}
+   710→                  min={0}
+   711→                  max={90}
+   712→                  step={5}
+   713→                  disabled={!dmrvEnabled}
+   714→                  aria-label={t("calc.fin.dmrvReduction")}
+   715→                />
+   716→                <p className="text-xs text-muted-foreground leading-relaxed">
+   717→                  {t("calc.fin.dmrvReductionHint")}
+   718→                </p>
+   719→              </div>
+   720→
+   721→              {/* Premium slider */}
+   722→              <div className="space-y-2">
+   723→                <div className="flex items-center justify-between">
+   724→                  <Label className="text-xs font-medium">{t("calc.fin.dmrvPremium")}</Label>
+   725→                  <span className="text-sm font-semibold tabular-nums text-violet-600 dark:text-violet-400">
+   726→                    +{premiumPct}%
+   727→                  </span>
+   728→                </div>
+   729→                <Slider
+   730→                  value={[premiumPct]}
+   731→                  onValueChange={(v) => setDmrvPremium(String(v[0]))}
+   732→                  min={0}
+   733→                  max={40}
+   734→                  step={1}
+   735→                  disabled={!dmrvEnabled}
+   736→                  aria-label={t("calc.fin.dmrvPremium")}
+   737→                />
+   738→                <p className="text-xs text-muted-foreground leading-relaxed">
+   739→                  {t("calc.fin.dmrvPremiumHint")}
+   740→                </p>
+   741→              </div>
+   742→            </div>
+   743→
+   744→            {/* Live preview of base → adjusted */}
+   745→            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+   746→              {/* Verification cost row */}
+   747→              <div className="rounded-md border bg-muted/30 p-3 space-y-1">
+   748→                <div className="text-xs text-muted-foreground">{t("calc.fin.dmrvBaseVerify")}</div>
+   749→                <div className="text-sm font-medium tabular-nums line-through text-muted-foreground">
+   750→                  {fmt(baseVerify)} {t("unit.thb")}
+   751→                </div>
+   752→                <div className="text-xs text-muted-foreground">{t("calc.fin.dmrvAdjVerify")}</div>
+   753→                <div className="text-lg font-semibold tabular-nums text-emerald-600 dark:text-emerald-400">
+   754→                  {fmt(adjVerify)} {t("unit.thb")}
+   755→                </div>
+   756→                <div className="text-xs text-emerald-600 dark:text-emerald-400">
+   757→                  {t("calc.fin.dmrvSave")}: {fmt(verifySave)} {t("unit.thb")}
+   758→                </div>
+   759→              </div>
+   760→
+   761→              {/* Carbon price row */}
+   762→              <div className="rounded-md border bg-muted/30 p-3 space-y-1">
+   763→                <div className="text-xs text-muted-foreground">{t("calc.fin.dmrvBasePrice")}</div>
+   764→                <div className="text-sm font-medium tabular-nums line-through text-muted-foreground">
+   765→                  {fmt(basePrice)} {t("unit.thb")}
+   766→                </div>
+   767→                <div className="text-xs text-muted-foreground">{t("calc.fin.dmrvAdjPrice")}</div>
+   768→                <div className="text-lg font-semibold tabular-nums text-violet-600 dark:text-violet-400">
+   769→                  {fmt(adjPrice)} {t("unit.thb")}
+   770→                </div>
+   771→                <div className="text-xs text-violet-600 dark:text-violet-400">
+   772→                  {t("calc.fin.dmrvAdd")}: {fmt(priceAdd)} {t("unit.thb")}
+   773→                </div>
+   774→              </div>
+   775→            </div>
+   776→
+   777→            {/* Cumulative benefit preview */}
+   778→            <div className="rounded-md border bg-gradient-to-br from-emerald-50 to-violet-50 dark:from-emerald-950/30 dark:to-violet-950/30 p-3">
+   779→              <div className="flex items-center gap-2 mb-2">
+   780→                <Sparkles className="h-3.5 w-3.5 text-emerald-600 dark:text-emerald-400" />
+   781→                <span className="text-xs font-medium">{t("calc.fin.dmrvBenefit")}</span>
+   782→              </div>
+   783→              <div className="grid grid-cols-2 gap-2 text-xs">
+   784→                <div>
+   785→                  <div className="text-muted-foreground">{t("calc.fin.dmrvSaveTotal")}</div>
+   786→                  <div className="font-semibold tabular-nums text-emerald-600 dark:text-emerald-400">
+   787→                    {fmt(totalVerifySave)} {t("unit.thb")}
+   788→                  </div>
+   789→                  <div className="text-[10px] text-muted-foreground">{verifyCycles} cycles × {fmt(verifySave)}</div>
+   790→                </div>
+   791→                <div>
+   792→                  <div className="text-muted-foreground">{t("calc.fin.dmrvPremiumRevenueTotal")}</div>
+   793→                  <div className="font-semibold tabular-nums text-violet-600 dark:text-violet-400">
+   794→                    {fmt(totalPremiumRev)} {t("unit.thb")}
+   795→                  </div>
+   796→                  <div className="text-[10px] text-muted-foreground">
+   797→                    {fmt(Number(annualCredits))} {t("unit.tco2e")}/yr × {years}{t("unit.yr")}
+   798→                  </div>
+   799→                </div>
+   800→              </div>
+   801→            </div>
+   802→          </CardContent>
+   803→        </Card>
+   804→      </div>
+   805→
+   806→      {/* Result panel: comparison baseline vs adjusted */}
+   807→      {result && (
+   808→        <Card>
+   809→          <CardHeader className="pb-3">
+   810→            <CardTitle className="flex items-center gap-2 text-base">
+   811→              <TrendingUp className="h-4 w-4 text-emerald-600 dark:text-emerald-400" />
+   812→              {t("calc.credits.result")}
+   813→              {dmrvEnabled && baselineResult && (
+   814→                <Badge variant="outline" className="text-emerald-700 dark:text-emerald-300 border-emerald-300 dark:border-emerald-700">
+   815→                  {t("calc.fin.dmrvBenefit")}
+   816→                </Badge>
+   817→              )}
+   818→            </CardTitle>
+   819→          </CardHeader>
+   820→          <CardContent>
+   821→            <div className="space-y-4">
+   822→              {/* Metrics with before/after deltas */}
+   823→              <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+   824→                <MetricCompare
+   825→                  label={t("calc.fin.npv")}
+   826→                  baseline={baselineResult?.npvThb}
+   827→                  adjusted={result.npvThb}
+   828→                  fmt={fmt}
+   829→                  suffix="THB"
+   830→                  tone="violet"
+   831→                  dmrvOn={dmrvEnabled}
+   832→                />
+   833→                <MetricCompare
+   834→                  label={t("calc.fin.irr")}
+   835→                  baseline={baselineResult?.irrPct}
+   836→                  adjusted={result.irrPct}
+   837→                  fmt={fmt}
+   838→                  suffix="%"
+   839→                  tone="emerald"
+   840→                  dmrvOn={dmrvEnabled}
+   841→                />
+   842→                <MetricCompare
+   843→                  label={t("calc.fin.payback")}
+   844→                  baseline={baselineResult?.paybackYear}
+   845→                  adjusted={result.paybackYear}
+   846→                  fmt={fmt}
+   847→                  suffix={t("unit.yr")}
+   848→                  tone="amber"
+   849→                  dmrvOn={dmrvEnabled}
+   850→                  lowerIsBetter
+   851→                />
+   852→                <MetricCompare
+   853→                  label={t("calc.fin.breakeven")}
+   854→                  baseline={baselineResult?.breakevenPriceThbPerTco2e}
+   855→                  adjusted={result.breakevenPriceThbPerTco2e}
+   856→                  fmt={fmt}
+   857→                  suffix="THB/tCO₂e"
+   858→                  tone="sky"
+   859→                  dmrvOn={dmrvEnabled}
+   860→                  lowerIsBetter
+   861→                />
+   862→              </div>
+   863→
+   864→              <div className="grid grid-cols-2 gap-3 text-sm">
+   865→                <div className="rounded-md bg-muted/60 p-2.5">
+   866→                  <div className="text-xs text-muted-foreground">{t("calc.fin.capexTotal")}</div>
+   867→                  <div className="font-medium tabular-nums">{fmt(result.capexThb)} {t("unit.thb")}</div>
+   868→                </div>
+   869→                <div className="rounded-md bg-muted/60 p-2.5">
+   870→                  <div className="text-xs text-muted-foreground">{t("calc.fin.costTotal")}</div>
+   871→                  <div className="font-medium tabular-nums">{fmt(result.totalCostThb)} {t("unit.thb")}</div>
+   872→                </div>
+   873→              </div>
+   874→
+   875→              <div>
+   876→                <div className="flex items-center justify-between mb-2">
+   877→                  <h4 className="text-sm font-medium">{t("calc.fin.cashflow")}</h4>
+   878→                  <Badge variant={result.isViable ? "default" : "destructive"} className={result.isViable ? "bg-emerald-600" : ""}>
+   879→                    {result.isViable ? t("calc.fin.viable") : t("calc.fin.notViable")}
+   880→                  </Badge>
+   881→                </div>
+   882→                <div className="h-64">
+   883→                  <ResponsiveContainer width="100%" height="100%">
+   884→                    <ComposedChart data={result.cashflow}>
+   885→                      <CartesianGrid strokeDasharray="3 3" vertical={false} />
+   886→                      <XAxis dataKey="year" tick={{ fontSize: 12 }} />
+   887→                      <YAxis tick={{ fontSize: 12 }} tickFormatter={(v) => fmt(Number(v) / 1000, { maximumFractionDigits: 0 }) + "k"} />
+   888→                      <Tooltip formatter={(v: number) => fmt(v, { maximumFractionDigits: 0 }) + " THB"} />
+   889→                      <Legend />
+   890→                      <Bar dataKey="cost" name="Cost" fill="#ef4444" radius={[4, 4, 0, 0]} barSize={20} />
+   891→                      <Bar dataKey="carbonRevenue" name="Revenue" fill="#16a34a" radius={[4, 4, 0, 0]} barSize={20} />
+   892→                      <Line type="monotone" dataKey="cumulative" name="Cumulative" stroke="#0d9488" strokeWidth={2.5} dot={{ r: 3 }} />
+   893→                    </ComposedChart>
+   894→                  </ResponsiveContainer>
+   895→                </div>
+   896→              </div>
+   897→            </div>
+   898→          </CardContent>
+   899→        </Card>
+   900→      )}
+   901→    </div>
+   902→  );
+   903→}
+   904→
+   905→// -------- Sample Adequacy Tab --------
+   906→function SampleAdequacyTab() {
+   907→  const { t, fmt } = useI18n();
+   908→  const [samples, setSamples] = useState("31.8, 33.2, 32.0, 34.1, 31.5");
+   909→  const [target, setTarget] = useState("15");
+   910→  const [result, setResult] = useState<{ nCurrent: number; uncertaintyPct: number; nRequired: number; isAdequate: boolean } | null>(null);
+   911→  const [loading, setLoading] = useState(false);
+   912→
+   913→  async function compute() {
+   914→    setLoading(true);
+   915→    try {
+   916→      const arr = samples.split(/[,\s]+/).map((s) => Number(s)).filter((n) => !Number.isNaN(n) && n > 0);
+   917→      const res = await fetch("/api/calculate/sample-adequacy", {
+   918→        method: "POST",
+   919→        headers: { "Content-Type": "application/json" },
+   920→        body: JSON.stringify({ samples: arr, targetPct: Number(target) }),
+   921→      });
+   922→      if (!res.ok) throw new Error("Failed");
+   923→      setResult(await res.json());
+   924→    } finally {
+   925→      setLoading(false);
+   926→    }
+   927→  }
+   928→
+   929→  return (
+   930→    <Card>
+   931→      <CardHeader>
+   932→        <CardTitle className="text-base">{t("calc.samples.title")}</CardTitle>
+   933→      </CardHeader>
+   934→      <CardContent>
+   935→        <div className="grid gap-4 lg:grid-cols-3">
+   936→          <div className="lg:col-span-2 space-y-3">
+   937→            <div className="space-y-1.5">
+   938→              <Label>{t("calc.samples.input")}</Label>
+   939→              <Input value={samples} onChange={(e) => setSamples(e.target.value)} className="font-mono text-xs" />
+   940→            </div>
+   941→            <div className="space-y-1.5">
+   942→              <Label>{t("calc.samples.target")}</Label>
+   943→              <Input value={target} onChange={(e) => setTarget(e.target.value)} type="number" />
+   944→            </div>
+   945→            <Button onClick={compute} disabled={loading} className="gap-2">
+   946→              <CalcIcon className="h-4 w-4" /> {loading ? t("common.loading") : t("calc.credits.compare")}
+   947→            </Button>
+   948→          </div>
+   949→          <div className="rounded-md border bg-muted/30 p-4 space-y-2">
+   950→            {!result ? (
+   951→              <div className="flex h-full items-center justify-center text-sm text-muted-foreground">
+   952→                {t("common.none")}
+   953→              </div>
+   954→            ) : (
+   955→              <>
+   956→                <div className="flex items-center justify-between">
+   957→                  <span className="text-xs text-muted-foreground">{t("calc.samples.current")}</span>
+   958→                  <span className="font-semibold tabular-nums">{result.nCurrent}</span>
+   959→                </div>
+   960→                <div className="flex items-center justify-between">
+   961→                  <span className="text-xs text-muted-foreground">{t("calc.samples.required")}</span>
+   962→                  <span className="font-semibold tabular-nums">{result.nRequired}</span>
+   963→                </div>
+   964→                <div className="flex items-center justify-between">
+   965→                  <span className="text-xs text-muted-foreground">{t("calc.samples.unc")}</span>
+   966→                  <span className="font-semibold tabular-nums">{fmt(result.uncertaintyPct)}%</span>
+   967→                </div>
+   968→                <div className="pt-2 border-t">
+   969→                  <Badge variant={result.isAdequate ? "default" : "destructive"} className={result.isAdequate ? "bg-emerald-600" : ""}>
+   970→                    {result.isAdequate ? t("calc.samples.adequate") : t("calc.samples.inadequate")}
+   971→                  </Badge>
+   972→                </div>
+   973→              </>
+   974→            )}
+   975→          </div>
+   976→        </div>
+   977→      </CardContent>
+   978→    </Card>
+   979→  );
+   980→}
+   981→
+   982→// -------- Aggregation Tab --------
+   983→function AggregationTab() {
+   984→  const { t, fmt, fmtArea, isThai, raiToHa } = useI18n();
+   985→  const [areas, setAreas] = useState(isThai ? "62.5, 93.75, 156.25, 312.5, 187.5" : "10, 15, 25, 50, 30");
+   986→  const [cost, setCost] = useState("150000");
+   987→  const [result, setResult] = useState<{ nFarms: number; totalAreaHa: number; verificationCostPerHaSolo: number; verificationCostPerHaGrouped: number; savingPct: number } | null>(null);
+   988→  const [loading, setLoading] = useState(false);
+   989→
+   990→  async function compute() {
+   991→    setLoading(true);
+   992→    try {
+   993→      const arr = areas
+   994→        .split(/[,\s]+/)
+   995→        .map((s) => Number(s))
+   996→        .filter((n) => !Number.isNaN(n) && n > 0)
+   997→        .map((v) => (isThai ? raiToHa(v) : v));
+   998→      const res = await fetch("/api/calculate/aggregation", {
+   999→        method: "POST",
+  1000→        headers: { "Content-Type": "application/json" },
+  1001→        body: JSON.stringify({ farmAreasHa: arr, verificationCost: Number(cost) }),
+  1002→      });
+  1003→      if (!res.ok) throw new Error("Failed");
+  1004→      const data = await res.json();
+  1005→      setResult(data.result);
+  1006→    } finally {
+  1007→      setLoading(false);
+  1008→    }
+  1009→  }
+  1010→
+  1011→  return (
+  1012→    <Card>
+  1013→      <CardHeader>
+  1014→        <CardTitle className="text-base">{t("calc.aggregation.title")}</CardTitle>
+  1015→      </CardHeader>
+  1016→      <CardContent>
+  1017→        <div className="grid gap-4 lg:grid-cols-3">
+  1018→          <div className="lg:col-span-2 space-y-3">
+  1019→            <div className="space-y-1.5">
+  1020→              <Label>
+  1021→                {t("calc.aggregation.areas")}
+  1022→                {isThai ? ` (${t("unit.rai")})` : ` (ha)`}
+  1023→              </Label>
+  1024→              <Input value={areas} onChange={(e) => setAreas(e.target.value)} className="font-mono text-xs" />
+  1025→              <p className="text-xs text-muted-foreground">{t("farms.areaHelp")}</p>
+  1026→            </div>
+  1027→            <div className="space-y-1.5">
+  1028→              <Label>{t("calc.aggregation.verifyCost")}</Label>
+  1029→              <Input value={cost} onChange={(e) => setCost(e.target.value)} type="number" />
+  1030→            </div>
+  1031→            <Button onClick={compute} disabled={loading} className="gap-2">
+  1032→              <Network className="h-4 w-4" /> {loading ? t("common.loading") : t("calc.aggregation.compute")}
+  1033→            </Button>
+  1034→          </div>
+  1035→          <div className="rounded-md border bg-muted/30 p-4 space-y-2">
+  1036→            {!result ? (
+  1037→              <div className="flex h-full items-center justify-center text-sm text-muted-foreground">
+  1038→                {t("common.none")}
+  1039→              </div>
+  1040→            ) : (
+  1041→              <>
+  1042→                <div className="flex items-center justify-between">
+  1043→                  <span className="text-xs text-muted-foreground">{t("dashboard.totalFarms")}</span>
+  1044→                  <span className="font-semibold tabular-nums">{result.nFarms}</span>
+  1045→                </div>
+  1046→                <div className="flex items-center justify-between">
+  1047→                  <span className="text-xs text-muted-foreground">{t("dashboard.totalArea")}</span>
+  1048→                  <span className="font-semibold tabular-nums">{fmtArea(result.totalAreaHa)}</span>
+  1049→                </div>
+  1050→                <div className="flex items-center justify-between">
+  1051→                  <span className="text-xs text-muted-foreground">{t("calc.aggregation.solo")}</span>
+  1052→                  <span className="font-semibold tabular-nums">{fmt(result.verificationCostPerHaSolo)} THB/{isThai ? t("unit.rai") : "ha"}</span>
+  1053→                </div>
+  1054→                <div className="flex items-center justify-between">
+  1055→                  <span className="text-xs text-muted-foreground">{t("calc.aggregation.grouped")}</span>
+  1056→                  <span className="font-semibold tabular-nums text-emerald-600 dark:text-emerald-400">{fmt(result.verificationCostPerHaGrouped)} THB/{isThai ? t("unit.rai") : "ha"}</span>
+  1057→                </div>
+  1058→                <div className="pt-2 border-t">
+  1059→                  <Badge variant="default" className="bg-emerald-600">
+  1060→                    {t("calc.aggregation.saving")}: {fmt(result.savingPct)}%
+  1061→                  </Badge>
+  1062→                </div>
+  1063→              </>
+  1064→            )}
+  1065→          </div>
+  1066→        </div>
+  1067→      </CardContent>
+  1068→    </Card>
+  1069→  );
+  1070→}
+  1071→
+  1072→// -------- Helpers --------
+  1073→function Field({ label, value, onChange }: { label: string; value: string; onChange: (v: string) => void }) {
+  1074→  return (
+  1075→    <div className="space-y-1.5">
+  1076→      <Label className="text-xs">{label}</Label>
+  1077→      <Input value={value} onChange={(e) => onChange(e.target.value)} type="number" step="0.01" className="text-sm" />
+  1078→    </div>
+  1079→  );
+  1080→}
+  1081→
+  1082→function Metric({ label, value, fmt, suffix, tone }: { label: string; value: number | null; fmt: (n: number, opts?: Intl.NumberFormatOptions) => string; suffix: string; tone: "violet" | "emerald" | "amber" | "sky" }) {
+  1083→  const tones: Record<string, string> = {
+  1084→    violet: "bg-violet-50/60 dark:bg-violet-950/20",
+  1085→    emerald: "bg-emerald-50/60 dark:bg-emerald-950/20",
+  1086→    amber: "bg-amber-50/60 dark:bg-amber-950/20",
+  1087→    sky: "bg-sky-50/60 dark:bg-sky-950/20",
+  1088→  };
+  1089→  return (
+  1090→    <div className={`rounded-md p-3 ${tones[tone]}`}>
+  1091→      <div className="text-xs text-muted-foreground">{label}</div>
+  1092→      <div className="text-xl font-semibold tabular-nums">
+  1093→        {value === null ? "—" : fmt(value)}
+  1094→      </div>
+  1095→      <div className="text-xs text-muted-foreground">{suffix}</div>
+  1096→    </div>
+  1097→  );
+  1098→}
+  1099→
+  1100→/**
+  1101→ * Like Metric, but shows before/after delta when dMRV is on. If dMRV is off
+  1102→ * (dmrvOn=false), behaves like a single-value Metric (no delta shown).
+  1103→ */
+  1104→function MetricCompare({
+  1105→  label,
+  1106→  baseline,
+  1107→  adjusted,
+  1108→  fmt,
+  1109→  suffix,
+  1110→  tone,
+  1111→  dmrvOn,
+  1112→  lowerIsBetter = false,
+  1113→}: {
+  1114→  label: string;
+  1115→  baseline: number | null | undefined;
+  1116→  adjusted: number | null;
+  1117→  fmt: (n: number, opts?: Intl.NumberFormatOptions) => string;
+  1118→  suffix: string;
+  1119→  tone: "violet" | "emerald" | "amber" | "sky";
+  1120→  dmrvOn: boolean;
+  1121→  lowerIsBetter?: boolean;
+  1122→}) {
+  1123→  const tones: Record<string, string> = {
+  1124→    violet: "bg-violet-50/60 dark:bg-violet-950/20",
+  1125→    emerald: "bg-emerald-50/60 dark:bg-emerald-950/20",
+  1126→    amber: "bg-amber-50/60 dark:bg-amber-950/20",
+  1127→    sky: "bg-sky-50/60 dark:bg-sky-950/20",
+  1128→  };
+  1129→
+  1130→  // Compute delta
+  1131→  const hasBoth = dmrvOn && baseline != null && adjusted != null;
+  1132→  const delta = hasBoth ? (adjusted as number) - (baseline as number) : 0;
+  1133→  // "Improved" means delta is in the good direction (lower is better => negative delta good)
+  1134→  const isImproved = hasBoth && (lowerIsBetter ? delta < 0 : delta > 0);
+  1135→  const isFlat = hasBoth && delta === 0;
+  1136→  const deltaLabel =
+  1137→    delta > 0 ? `+${fmt(delta)}` : `${fmt(delta)}`;
+  1138→
+  1139→  return (
+  1140→    <div className={`rounded-md p-3 ${tones[tone]}`}>
+  1141→      <div className="text-xs text-muted-foreground">{label}</div>
+  1142→      <div className="text-xl font-semibold tabular-nums">
+  1143→        {adjusted === null ? "—" : fmt(adjusted)}
+  1144→      </div>
+  1145→      <div className="flex items-center gap-1 text-xs">
+  1146→        {hasBoth ? (
+  1147→          <>
+  1148→            <span className="text-muted-foreground">
+  1149→              {fmt(baseline as number)} →
+  1150→            </span>
+  1151→            <span
+  1152→              className={
+  1153→                isImproved
+  1154→                  ? "text-emerald-600 dark:text-emerald-400 font-medium"
+  1155→                  : isFlat
+  1156→                  ? "text-muted-foreground"
+  1157→                  : "text-red-600 dark:text-red-400 font-medium"
+  1158→              }
+  1159→            >
+  1160→              {isImproved ? <ArrowUpRight className="inline h-3 w-3" /> : null}
+  1161→              {isImproved || !isFlat ? (
+  1162→                <ArrowDownRight className={isImproved ? "hidden" : "inline h-3 w-3"} />
+  1163→              ) : null}
+  1164→              {" "}
+  1165→              {deltaLabel}
+  1166→            </span>
+  1167→          </>
+  1168→        ) : (
+  1169→          <span className="text-muted-foreground">{suffix}</span>
+  1170→        )}
+  1171→      </div>
+  1172→    </div>
+  1173→  );
+  1174→}
+  1175→

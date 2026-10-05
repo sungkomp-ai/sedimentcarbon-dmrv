@@ -1,0 +1,544 @@
+     1→# SedimentCarbon dMRV - Worklog
+     2→
+     3→## Project Overview
+     4→Building a Digital MRV (Measurement, Reporting, Verification) system for
+     5→Sediment-Trap Agriculture Carbon Projects. Adapted from a Python FastAPI +
+     6→PostgreSQL architecture (PDF spec) to Next.js 16 + TypeScript + Prisma (SQLite)
+     7→+ shadcn/ui, with bilingual UI (TH/EN) and all calculation engines ported to
+     8→TypeScript.
+     9→
+    10→## Architecture decisions
+    11→- Single SPA on `/` route (per project rules), internal tab/section navigation.
+    12→- API routes under `/api/*` (Next.js Route Handlers).
+    13→- Core engines as pure TypeScript modules under `src/lib/core/`.
+    14→- Prisma + SQLite for persistence (PostGIS geospatial replaced with GeoJSON
+    15→  strings + client-side rendering).
+    16→- i18n via custom lightweight context (TH/EN), no external runtime needed.
+    17→- Hash chain audit trail stored alongside each soil sample record.
+    18→
+    19→---
+    20→Task ID: 1
+    21→Agent: main
+    22→Task: Build the full SedimentCarbon dMRV Next.js application adapted from the PDF Python spec.
+    23→
+    24→Work Log:
+    25→- Read PDF spec (sedimentcarbon_dmrv_codebase.pdf) — FastAPI + PostgreSQL/PostGIS design.
+    26→- Adapted architecture: Next.js 16 + TypeScript + Prisma (SQLite) + shadcn/ui, single SPA on `/`.
+    27→- Defined Prisma schema (User, Farm, MonitoringPlot, SoilSample, SedimentMeasurement, ManagementActivity, CreditCalculation) with GeoJSON-as-string geospatial fields.
+    28→- Ported all 7 calculation engines from Python to TypeScript under src/lib/core/:
+    29→  - soc.ts: SOC stock, ESM correction, t-table uncertainty, required sample size.
+    30→  - emissions.ts: N2O direct/indirect, CH4 from flooding, fuel + lime emissions.
+    31→  - sediment.ts: trap volume/mass/carbon, USLE soil loss.
+    32→  - standards.ts: 4 standards (TVER/VCS/GS/ISO14064) with buffer/uncertainty rules.
+    33→  - credits.ts: credit comparison + uncertainty deduction + buffer pool.
+    34→  - finance.ts: NPV, IRR (bisection), Payback, Break-even, Aggregation benefit.
+    35→  - audit.ts: SHA-256 hash chain (stable JSON stringify).
+    36→- Built bilingual i18n system (TH/EN) with Buddhist Era date formatting for TH.
+    37→- Built geo utilities (polygon area, centroid, bounds, SVG projection) to replace PostGIS.
+    38→- Wrote seed script with the PDF's sample scenario (50 ha farm, 32.4→36.9 t C/ha over 5 yrs).
+    39→- Built 9 API routes (farms, soil-samples, sediment, activities, calculate/*, audit, standards, dashboard).
+    40→- Built 7 SPA sections + layout shell (sidebar/topbar/footer with TH/EN toggle + dark mode).
+    41→- Built a custom SVG-based GeoJSON map (replaces MapLibre for offline rendering).
+    42→- Fixed two lint issues (setState-in-effect in ThemeToggle + MiniMap).
+    43→- Fixed audit hash chain bug (seed payload was missing `method` field).
+    44→- Verified end-to-end with Agent Browser:
+    45→  - Dashboard renders KPIs (1 farm, 50 ha, 10 samples, 1.5 m³ sediment, ~2,560 tCO₂e credits).
+    46→  - Calculator outputs match PDF spec: ΔSOC=0.9 t C/ha/yr, Gross=825, T-VER net=649 tCO₂e.
+    47→  - Audit trail valid: 10 records verified, SHA-256 chain intact.
+    48→  - Language toggle (TH↔EN) and mobile drawer navigation work.
+    49→
+    50→Stage Summary:
+    51→- Application is fully functional and self-verified via Agent Browser.
+    52→- Core engines are a faithful TypeScript port of the PDF Python spec, results match within rounding.
+    53→- Bilingual UI (TH/EN) with BE/CE date handling, dark/light theme toggle, sticky footer.
+    54→- Hash-chain audit trail intact and verifiable.
+    55→- All 9 API routes return correct data; lint passes clean.
+    56→
+    57→---
+    58→Task ID: 2
+    59→Agent: main
+    60→Task: Add real Leaflet map + convert area units to "ไร่" when UI is in Thai.
+    61→
+    62→Work Log:
+    63→- Installed `leaflet`, `react-leaflet` (v5, React 19-compatible), `@types/leaflet`.
+    64→- Added bilingual area unit helper `src/lib/i18n/area.ts`:
+    65→  - HA_TO_RAI = 6.25 (1 ha = 6.25 rai, 1 rai = 1600 m²).
+    66→  - `fmtArea(ha, locale)` → TH shows "312.50 ไร่", EN shows "50.00 ha".
+    67→  - `areaValue`, `haToRai`, `raiToHa` helpers.
+    68→- Extended `useI18n()` hook with `fmtArea`, `areaValue`, `haToRai`, `raiToHa`, `isThai`.
+    69→- Added new translation keys: `unit.rai`, `farms.areaRai`, `farms.areaHelp`, `dashboard.totalAreaRai`.
+    70→- Replaced the SVG-only MiniMap with a real `LeafletMap` component:
+    71→  - OpenStreetMap / Esri satellite / OpenTopoMap tile layers.
+    72→  - Click to add vertices, double-click to clear, auto-fit-to-bounds.
+    73→  - Polygon + Polyline + CircleMarker overlays with green accent.
+    74→  - HUD shows locale-aware area (rai for TH, ha for EN).
+    75→  - Loaded via `next/dynamic` with `ssr: false` (Leaflet needs `window`).
+    76→- Updated all area displays across the app:
+    77→  - Dashboard KPI hint: `fmtArea(totalAreaHa)`.
+    78→  - Farms section: total area KPI + per-farm card area.
+    79→  - Farm form dialog: switched to satellite map style + area help text.
+    80→  - Calculator credits tab: input field is "พื้นที่ (ไร่)" in TH, default 312.5; converts back to ha for API.
+    81→  - Calculator finance tab: same rai/ha conversion.
+    82→  - Calculator aggregation tab: input list in rai (TH) / ha (EN), output uses fmtArea.
+    83→- Fixed seed polygon to be ~50 ha (was ~478 ha) so it matches the stored `areaHa: 50`.
+    84→- Added `key={locale}` to all calculator tab panels so they remount when the language toggles, resetting inputs to locale-appropriate defaults (312.5 rai for TH vs 50 ha for EN).
+    85→- Fixed lint issues: removed dead `canonical` variable in audit.ts, removed unused eslint-disable directive, refactored map drawing-state to use derived `parsedPoints` + `draft` (no setState in effect).
+    86→
+    87→Stage Summary:
+    88→- Real Leaflet map (with OSM/satellite/topo tile options) replaces the SVG-only approach.
+    89→- Area displays in ไร่ for Thai UI, ha for English — both display and input fields.
+    90→- All calculations stay in ha internally; only the UI layer converts.
+    91→- Verified end-to-end via Agent Browser:
+    92→  - Dashboard shows "312.50 ไร่" (was previously "50 ha").
+    93→  - Farms section card shows "312.50 ไร่" and the Leaflet HUD shows "316.04 ไร่ · 4 pts".
+    94→  - Calculator: TH shows "พื้นที่ (ไร่)" default 312.5; EN shows "Project Area (ha)" default 50.
+    95→  - Computing credits with 312.5 rai input yields correct results (T-VER net 649.425 tCO₂e) — proving the rai→ha conversion works.
+    96→  - Lint clean, page renders 200 OK, dev server stable.
+    97→
+    98→---
+    99→Task ID: 3
+   100→Agent: main
+   101→Task: Add an overview map to the Dashboard showing farm locations + boundaries with OSM/satellite toggle.
+   102→
+   103→Work Log:
+   104→- Extended `/api/dashboard` to include `geomGeojson` and `soilType` for each farm.
+   105→- Created `src/components/sections/dashboard-map.tsx`:
+   106→  - Multi-polygon Leaflet map that renders every farm boundary.
+   107→  - Auto-fit bounds across all farms (or default to Thai NE region if no farms).
+   108→  - Tile toggle button group: "ดาวเทียม" (Esri World Imagery, default) ↔ "ถนน" (OpenStreetMap).
+   109→  - Each polygon colored by its standard accent (T-VER green, VCS teal, GS yellow, ISO purple).
+   110→  - Sticky tooltip per polygon shows farm name + standard + area (locale-aware rai/ha) + sample/sediment counts.
+   111→  - Empty-state hint when no farms registered.
+   112→  - Loaded via `next/dynamic` `ssr: false` to avoid `window is not defined` SSR error.
+   113→- Updated `dashboard-section.tsx`:
+   114→  - Added `MapPin` import + `Badge` import.
+   115→  - Updated `DashboardData.farms` type to include `geomGeojson` + `soilType`.
+   116→  - Inserted a new "ที่ตั้งและขอบเขตแปลง / Farm Locations & Boundaries" Card above the KPI grid.
+   117→
+   118→Stage Summary:
+   119→- Dashboard now leads with a 380px interactive map showing all farm polygons.
+   120→- Tile toggle works verified via Agent Browser:
+   121→  - Default satellite: 12/12 Esri tiles loaded, polygon stroke `#16a34a` (T-VER green).
+   122→  - Toggle to streets: switches to `c.tile.openstreetmap.org` tiles.
+   123→  - Toggle back to satellite: switches to `server.arcgisonline.com` tiles.
+   124→  - Tooltip on polygon hover shows: "แปลงสาธิตทุ่งกะเฉดา · TVER · 312.50 ไร่ · ตัวอย่างดิน: 10 · ตะกอน: 3".
+   125→- Mobile (390×844): map renders at 354×380px, footer correctly pushed down by content.
+   126→- Lint clean, dev server stable, page renders 200 OK.
+   127→
+   128→---
+   129→Task ID: 4
+   130→Agent: main
+   131→Task: Add dMRV adjustment panel in the Finance tab to let users model how the dMRV system lowers verification cost and lifts carbon credit value.
+   132→
+   133→Work Log:
+   134→- Added 17 new bilingual translation keys (calc.fin.dmrv* — title, enable toggle, reduction/premium labels, hints, base/adjusted preview, cumulative savings, premium revenue, benefit summary, full descriptive text).
+   135→- Refactored FinanceTab in calculator-section.tsx:
+   136→  - Added dMRV explainer card at the top with full Thai/English description of why dMRV lowers verification cost and lifts credit value (per the user's prompt).
+   137→  - Added a "ปรับค่าตรวจประเมินด้วย dMRV" panel with:
+   138→    - Switch toggle to enable/disable dMRV adjustment (default ON).
+   139→    - "ลดขั้นตอนตรวจสอบภาคสนาม (%)" slider 0-90% (default 50%).
+   140→    - "เพิ่มมูลค่าเครดิตจากความน่าเชื่อถือ (%)" slider 0-40% (default +10%).
+   141→    - Live preview of "ค่าตรวจประเมินพื้นฐาน → ค่าตรวจประเมินที่ปรับแล้ว" with strikethrough on base value and emerald accent on adjusted.
+   142→    - Live preview of "ราคาเครดิตพื้นฐาน → ราคาเครดิตที่ปรับแล้ว" with violet accent on adjusted.
+   143→    - Cumulative dMRV benefit box (gradient emerald→violet) showing total savings and total premium revenue over the project.
+   144→    - Panel auto-dims (opacity-50 + pointer-events-none) when switch is off.
+   145→  - Modified the compute flow to run BOTH baseline (no dMRV) and adjusted (with dMRV) financial analyses in parallel via Promise.all.
+   146→- Added a MetricCompare helper component that shows the adjusted value + the baseline→delta when dMRV is on (e.g. "NPV -80,722 → +174,190 (+254,912)") and falls back to a plain Metric when off.
+   147→- Lower-is-better flag for Payback and Breakeven so the delta arrow turns emerald when the value drops.
+   148→- Imported Switch, Slider, Sparkles, ArrowUpRight, ArrowDownRight from shadcn/ui and lucide-react.
+   149→
+   150→Stage Summary:
+   151→- The Finance tab now models the user's reasoning: dMRV's evidence-backed data → reduced verifier site time → lower verification cost; auditable hash chain → trust → higher credit price.
+   152→- Verified end-to-end via Agent Browser (TH mode, default sliders):
+   153→  - Base verify 150,000 THB → adjusted 75,000 THB (save 75,000/cycle).
+   154→  - Base price 350 THB → adjusted 385 THB (+35/ton).
+   155→  - Cumulative savings 225,000 THB over the 10-year project (3 verify cycles).
+   156→  - Baseline NPV -80,722 THB (NOT viable) → adjusted +174,190 THB (viable).
+   157→  - Baseline IRR -1.96% → adjusted +18.68%.
+   158→  - Baseline breakeven 950.99 → adjusted 751.95 THB/tCO₂e (-199.04 delta, emerald).
+   159→- Slider drag from 50% → 90% reduction: adjusted verify dropped to 15,000 THB, savings/cycle up to 135,000 THB.
+   160→- Toggle off switch: panel dims (opacity-50 + pointer-events-none), aria-checked=false confirmed via JS.
+   161→- English version mirrors all labels correctly.
+   162→- Lint clean, page renders 200 OK, dev server stable.
+   163→
+   164→---
+   165→Task ID: 5
+   166→Agent: main
+   167→Task: Add Nan-province highland farms (formerly shifting cultivation) with the specific sediment-trap design and create plot design illustrations.
+   168→
+   169→Work Log:
+   170→- Generated 3 illustrations via image-generation skill (z-ai CLI):
+   171→  - /public/plots/cross-section.png — cross-section of terraced plot with vetiver bund and check dam
+   172→  - /public/plots/aerial-view.png — aerial view showing alternating slope pattern
+   173→  - /public/plots/plot-closeup.png — close-up of tea/coffee growing on terraces
+   174→- Extended Prisma schema with 4 new fields on Farm:
+   175→  - crops (JSON string array)
+   176→  - elevationM (highland elevation)
+   177→  - plotDesign (JSON object: terraceWidthM, bundWidthM, alternatingSlope, hasCheckDam, bundCrop)
+   178→  - priorLandUse (e.g. "shifting_cultivation")
+   179→- Rewrote src/lib/seed.ts with 5 farms total:
+   180→  - demo-farm-001 (PDF spec, 50 ha flat field, Nakhon Ratchasima)
+   181→  - nan-farm-001 (5.2 ha tea farm, Mae Charim, 1100m, formerly shifting cultivation)
+   182→  - nan-farm-002 (4 ha arabica coffee, Pua, 1250m, vetiver + check dams)
+   183→  - nan-farm-003 (7 ha rotation crops, Santi Suk, 600m, rice + soybean + cover crop)
+   184→  - nan-farm-004 (6.5 ha mixed tea & coffee, Bo Kluea, 1400m, full design package)
+   185→- Each Nan farm has the spec's exact design: 1.5 m terrace + 0.8 m vetiver bund + check dam + alternating slope.
+   186→- Expanded trap types and added crops picker in farm-form-dialog.tsx:
+   187→  - New trap types: terrace_step, vetiver_bund, check_dam (renamed), alternating_slope.
+   188→  - Each with TH/EN labels and 1-line description.
+   189→  - New crops list: tea, coffee_arabica, upland_rice, soybean, cover_crop, shade_tree, rice.
+   190→  - Plot design params card (terrace width, bund width, bund crop, alternating slope, has check dam) with default values matching the user's spec (1.5 m / 0.8 m / vetiver / on / on).
+   191→  - Prior land use picker (shifting_cultivation / conventional_tillage / fallow / forest_degraded).
+   192→  - Elevation input with Mountain icon.
+   193→- Updated /api/farms (GET + POST) and /api/dashboard to round-trip the new fields.
+   194→- Updated dashboard-map.tsx tooltip to show: farm name, standard, area (locale-aware rai/ha), elevation, crops, sample/sediment counts, and a "เดิมทำไร่เลื่อนลอย" amber badge for former shifting cultivation.
+   195→- Updated farms-section.tsx card to display elevation (Mountain icon), slope %, crops (Leaf icon, badges), and prior-land-use badge.
+   196→- Added a new "ภาพประกอบแปลงดักตะกอนดิน / Sediment-Trap Plot Design Gallery" card to the dashboard with the 3 generated images, captions (TH/EN), and a 4-chip legend showing the design params (terrace 1.5 m, vetiver bund 0.8 m, check dam yes, water flow zigzag L↔R).
+   197→- Added highland badge to the dashboard map header when any farm is at elevation ≥ 500 m.
+   198→
+   199→Stage Summary:
+   200→- Database seeded with 5 farms (1 lowland + 4 Nan highland), 60 soil samples with intact hash-chain audit, 19 sediment measurements, 19 management activities.
+   201→- Plot design gallery renders 3 generated illustrations on the dashboard (verified loaded at 1344px width via Agent Browser).
+   202→- Dashboard map shows 5 polygons, "พื้นที่สูง" badge, all Nan farms with tooltips showing crops + elevation + "เดิมทำไร่เลื่อนลอย" badge.
+   203→- Farm form dialog now exposes all design parameters and the new trap/crop pickers, defaults match the user's spec (1.5 m terrace, 0.8 m vetiver bund, alternating slope on, check dam on).
+   204→- Total area: 72.7 ha (~454 ไร่), all credits/sediment/audit calculations still pass through hash-chain verification.
+   205→- Lint clean, dev server stable, page renders 200 OK.
+   206→
+   207→---
+   208→Task ID: 6
+   209→Agent: main
+   210→Task: Regenerate the cross-section image so water clearly flows zigzag (top of upper plot → end of plot → start of next plot, alternating L↔R).
+   211→
+   212→Work Log:
+   213→- First generation attempt: prompt described the zigzag pattern but the model didn't render it clearly (water flowed down side channels, not across each plot).
+   214→- Verified via VLM (z-ai vision with glm-5v-turbo): (1) terraced plots visible — YES; (2) zigzag water flow alternating L↔R — NO.
+   215→- Rewrote prompt with explicit numbered arrow sequence:
+   216→  - Arrow 1: LEFT end of TOP terrace → RIGHT end of TOP terrace (flowing left-to-right)
+   217→  - Arrow 2: drops RIGHT end of top → RIGHT end of second terrace
+   218→  - Arrow 3: RIGHT end of second → LEFT end of second (flowing right-to-left)
+   219→  - Arrow 4: drops LEFT end of second → LEFT end of third
+   220→  - Arrow 5: LEFT end of third → RIGHT end of third (flowing left-to-right)
+   221→  - Arrow 6: drops RIGHT end of third → RIGHT end of bottom
+   222→  - Arrow 7: RIGHT end of bottom → LEFT end of bottom (flowing right-to-left)
+   223→- Regenerated at /public/plots/cross-section.png (125KB, 1344×768).
+   224→- Re-verified via VLM:
+   225→  - (1) แปลงขั้นบรรไดเรียงซ้อนลงตามลาดเขา 4 แปลง: YES
+   226→  - (2) น้ำไหลซิกแซกสลับซ้าย-ขวา (L→R, R→L, L→R, R→L): YES
+   227→- Updated the dashboard caption + main description translation (TH and EN) to match the explicit zigzag pattern:
+   228→  - TH: "น้ำถูกบังคับให้ไหลจากต้นแปลงบน → ท้ายแปลง → ลงต้นแปลงถัดไป → สลับซ้าย-ขวา"
+   229→  - EN: "Water forced: top of upper plot → end of plot → start of next plot, alternating L↔R"
+   230→- Updated aerial-view caption to emphasise the zigzag as well.
+   231→- Verified in browser: new image loaded (cache-busted) at 1344×768.
+   232→
+   233→Stage Summary:
+   234→- Cross-section image now clearly shows the zigzag water flow: top-of-plot → end-of-plot → next-plot-start, alternating left↔right.
+   235→- Both terraced slope and zigzag flow confirmed by VLM vision verification.
+   236→- All captions and the gallery description in TH/EN updated to describe the explicit zigzag pattern.
+   237→
+   238→---
+   239→Task ID: 7
+   240→Agent: main
+   241→Task: Regenerate the cross-section image so each plot shows clearly alternating water flow direction (Plot 1 L→R, Plot 2 R→L, Plot 3 L→R, Plot 4 R→L).
+   242→
+   243→Work Log:
+   244→- First attempt with image-generation AI: model kept rendering all arrows pointing right, didn't alternate directions.
+   245→- Verified via VLM: only (1) and (2) passed; (3), (4), (5), (6) all failed because arrows all pointed right.
+   246→- Second attempt with explicit directional text "L→R" and "R→L" labels above arrows: model still didn't alternate.
+   247→- Switched approach: hand-crafted an SVG diagram (`/public/plots/cross-section.svg`) with:
+   248→  - 4 terraced plots stacked vertically down the slope.
+   249→  - Plot 1 (top): blue arrow #1 going LEFT→RIGHT with label "1 → น้ำไหลซ้าย→ขวา (L→R)".
+   250→  - Drop arrow #2 from right end of plot 1 down to right end of plot 2.
+   251→  - Plot 2: blue arrow #3 going RIGHT→LEFT with label "← 3 น้ำไหลขวา→ซ้าย (R→L)".
+   252→  - Drop arrow #4 from left end of plot 2 down to left end of plot 3.
+   253→  - Plot 3: blue arrow #5 going LEFT→RIGHT.
+   254→  - Drop arrow #6 from right end of plot 3 down to right end of plot 4.
+   255→  - Plot 4 (bottom): blue arrow #7 going RIGHT→LEFT.
+   256→  - Vetiver grass bunds (deep green) on the outer edge of each plot (alternating sides for zigzag).
+   257→  - Tea/coffee bushes inside each plot.
+   258→  - Summary legend at the bottom listing all 4 plot directions + design params.
+   259→- Converted SVG → PNG (1344×768, 66KB) via sharp library at high density (200).
+   260→- Re-verified via VLM:
+   261→  - (1) 4 terraced plots: YES
+   262→  - (2) Plot 1 L→R: YES
+   263→  - (3) Plot 2 R→L (alternating): YES
+   264→  - (4) Plot 3 L→R (alternating): YES
+   265→  - (5) Plot 4 R→L (alternating): YES
+   266→  - (6) Overall zigzag pattern L→R, R→L, L→R, R→L: YES
+   267→- Verified in browser via Agent Browser: new image loads at 1344×768.
+   268→- Lint clean, dev server stable.
+   269→
+   270→Stage Summary:
+   271→- Cross-section now shows the EXACT zigzag water flow the user requested: Plot 1 (L→R) → drop → Plot 2 (R→L) → drop → Plot 3 (L→R) → drop → Plot 4 (R→L).
+   272→- All 6 verification points pass via VLM vision analysis.
+   273→- Image is now hand-crafted SVG → PNG (66KB) instead of AI-generated (125KB), so the directional arrows are perfectly accurate.
+   274→- The SVG source is also saved at /public/plots/cross-section.svg for future edits.
+   275→
+   276→---
+   277→Task ID: 8
+   278→Agent: main
+   279→Task: (1) Make sediment-trapping amounts realistic per plot area + shape; (2) Add VVB verification menu covering project start + per-cycle verifications; (3) Build a comprehensive verification report.
+   280→
+   281→Work Log:
+   282→- Added VerificationRound Prisma model (roundType validation/verification, roundNumber, status planned/in_review/verified/rejected, vvbName/email, creditsClaimed/Verified, deductionsPct, findings JSON, statement, evidenceHashes).
+   283→- Linked Farm → verifications[] relation.
+   284→- Rewrote sediment trap computation in seed.ts as a physical model:
+   285→  - Per-trap catchment ~50-100 m² (small sub-plot draining into trap, NOT the whole farm).
+   286→  - trap_physical_area = clamp 3-6 m² (≈0.5% of per-plot catchment).
+   287→  - sediment_mass_t = erosion_rate_t_per_ha_yr × trap_catchment_ha × trapping_efficiency × years × ±15% variation.
+   288→  - sediment_volume_m³ = mass / bulk_density (1.3).
+   289→  - deltaHcm = volume / trap_area × 100 (rounded to 1 dp, min 5 cm).
+   290→- Per-farm erosion inputs (USLE-style baseline + design efficiency):
+   291→  - Demo (50 ha, 3.5% slope, flat): 8 t/ha/yr, 0.45 efficiency → 5 cm traps (min, realistic for flat field).
+   292→  - Tea farm (5.2 ha, 28% slope, terrace+vetiver+dam): 55 t/ha/yr, 0.75 → 14-17 cm traps.
+   293→  - Coffee (4 ha, 35% slope, full design): 75 t/ha/yr, 0.78 → 19-24 cm traps.
+   294→  - Rotation crops (7 ha, 18% slope): 35 t/ha/yr, 0.65 → 8-10 cm traps.
+   295→  - Mixed tea+coffee (6.5 ha, 40% slope, full design): 95 t/ha/yr, 0.82 → 27-34 cm traps.
+   296→  - Numbers correlate realistically with slope and design — verified via debug script.
+   297→- Added 3 verification rounds per farm in seed:
+   298→  - R0 (validation): at project start, status verified, with 4 findings (boundary, baseline, additionality, methodology).
+   299→  - R1 (verification): 5 years later, status verified, with 4 findings (soil_samples, sediment, uncertainty, audit) + 5% deduction.
+   300→  - R2 (verification): planned, future date range (showing the per-cycle workflow).
+   301→- Built 3 API routes:
+   302→  - GET/POST /api/vvb/[farmId] — list + create verification rounds, with credit comparison + audit trail + sediment totals.
+   303→  - PATCH/DELETE /api/vvb/[farmId]/[roundId] — update/delete a round.
+   304→  - GET /api/vvb/[farmId]/report — comprehensive report data: project, baseline, current, sediment, activities, credit calc, finance (with dMRV benefit), audit, all verification rounds.
+   305→- Added 50+ new translation keys for VVB section (TH/EN): title, desc, tab labels, round type, status, period, VVB name, credits claimed/verified, deductions, findings, statement, evidence labels, report labels.
+   306→- Added `vvb` to SectionId type, sidebar nav (BadgeCheck icon), topbar label map, and app-shell section switching.
+   307→- Built src/components/sections/vvb-section.tsx (~700 lines):
+   308→  - 3 sub-tabs: Rounds | Evidence | Report.
+   309→  - Rounds tab: card list of validation + verification rounds with status badges, VVB info, findings (with severity-colored badges), VVB statement (border-l-4 emerald), credits claimed/verified.
+   310→  - Evidence tab: audit trail status (valid/broken), sediment totals (volume/mass/C/CO2e), samples + activities counts, credit comparison table (highlighting the farm's standard).
+   311→  - Report tab: button to open full report modal.
+   312→- Built VvbReportDialog modal with comprehensive report body:
+   313→  - 7 sections: Project info | Baseline | Monitoring (sediment + activities) | Credit calculation (table) | Financial (NPV/IRR/Payback/Breakeven) | Audit trail (valid/broken) | Verification rounds.
+   314→  - Print header (only visible when printing) with generation date + farm ID.
+   315→  - Action bar: Print/Download PDF button (uses window.print()) + Close.
+   316→  - Print CSS added to globals.css (hide everything except modal, page margins 1.5cm, break-inside: avoid).
+   317→
+   318→Stage Summary:
+   319→- Sediment trap amounts now scale realistically with farm area, slope, and design efficiency (5-34 cm depending on conditions).
+   320→- VVB section added to nav menu (9 sections now: Dashboard, Farms, Samples, Sediment, Calculator, Standards, Audit, VVB, Guide).
+   321→- VVB section has 3 sub-tabs: Rounds (validation + per-cycle verifications), Evidence (audit trail + sediment + samples + activities + credit calc), Report (full comprehensive modal).
+   322→- Comprehensive report modal supports print-to-PDF via window.print(), with all project data, baseline + current samples, monitoring data, credit calculation table, financial analysis (with dMRV benefit), audit trail status, and all verification rounds with VVB findings + statements.
+   323→- Lint clean, dev server stable, page renders 200 OK, all API endpoints return correct data.
+   324→
+   325→---
+   326→Task ID: 9
+   327→Agent: main
+   328→Task: Make sediment-trap amounts realistic per plot area + slope + design. The displayed totals should be the BIG total across all 7-10 terrace levels, not just the small sample captured in monitoring traps.
+   329→
+   330→Work Log:
+   331→- Created `src/lib/sediment-estimate.ts` with helpers:
+   332→  - `estimateErosionFromSlope()` — USLE-style lookup: 5 t/ha/yr (flat) → 120 t/ha/yr (extreme slope).
+   333→  - `estimateTrappingEfficiency()` — sum of design components (terrace_step +0.18, vetiver_bund +0.15, check_dam +0.10, alternating_slope +0.08, etc.), capped at 0.85.
+   334→  - `computeNumTerraceLevels()` — flat: 1-2; gentle: 2-4; highland: 7-10 based on slope.
+   335→  - `computeEstimatedSedimentTotal()` — computes the BIG total = erosion × area × efficiency × project_age (covers all 7-10 levels) + the small monitoring-trap sample.
+   336→- Updated seed.ts:
+   337→  - Increased Nan farm areas (more realistic for community-managed highland): tea 5.2→32 ha, coffee 4→25 ha, rotation 7→40 ha, mixed 6.5→28 ha. Demo stays 50 ha (flat).
+   338→  - Rewrote `computeRealisticSedimentTraps()`:
+   339→    - numTraps = 7-10 for highland (one per terrace level), 2-4 for gentle, 1-2 for flat.
+   340→    - Per-trap physical area: 4 m² (small monitoring structure).
+   341→    - Per-trap monitoring catchment: 50 m² (small sub-catchment at level's outlet).
+   342→    - Per-trap depth = erosion × small_catchment × efficiency × years × variation / (bulk_density × trap_area) → realistic 5-43 cm range.
+   343→    - Trap IDs: `DE-L01-TRAP`, `NA-L09-TRAP` etc. (L = level number).
+   344→- Updated `/api/sediment/route.ts` GET to return:
+   345→  - `measurements` (per-trap data with depths — small sample)
+   346→  - `farmTotals` (per-farm breakdown: sample + estimated BIG total + terrace levels)
+   347→  - `aggregate` (cross-farm totals: sample volume/mass + estimated BIG total)
+   348→- Updated `/api/dashboard/route.ts` to also return `estimatedSediment` (BIG totals across all farms).
+   349→- Rewrote `sediment-section.tsx` UI:
+   350→  - Top card: BIG estimated total (gradient emerald→violet) with 4 KPIs (volume/mass/C/CO2e) + "38 ชั้น terrace" badge.
+   351→  - Middle card: per-farm breakdown table (8 columns: แปลง, พื้นที่, ความชัน, ชั้น, Traps, ตะกอน/ชั้น, รวม (t), CO₂e (t)).
+   352→  - Bottom card (dashed border): "ตัวอย่างที่จับในกับดักมอนิเตอร์ริ่ง" — small sample with note explaining it's a verification sample.
+   353→  - Trap detail table unchanged.
+   354→
+   355→Stage Summary:
+   356→- All farms now show realistic BIG totals (computed via USLE erosion × area × efficiency × years, summing all 7-10 terrace levels):
+   357→  - Demo (50 ha, 3.5% slope): 1,816 t = 1,397 m³ (across 2 levels)
+   358→  - Tea (32 ha, 28%): 8,275 t = 6,366 m³ (across 9 levels, 920 t/level)
+   359→  - Coffee (25 ha, 35%): 9,951 t = 7,654 m³ (across 10 levels, 995 t/level)
+   360→  - Rotation (40 ha, 18%): 5,527 t = 4,251 m³ (across 7 levels, 790 t/level)
+   361→  - Mixed (28 ha, 40%): 15,370 t = 11,823 m³ (across 10 levels, 1,537 t/layer)
+   362→  - **Total: 40,938 t = 31,491 m³, 573.1 t C = 2,102 tCO₂e across 38 levels**
+   363→- Per-trap depths remain realistic (5-43 cm), scaling with slope and erosion.
+   364→- Sample captured in monitoring traps (small): 36.27 m³ = 47 t — clearly labeled as verification sample.
+   365→- Lint clean, dev server stable, page renders 200 OK.
+   366→
+   367→---
+   368→Task ID: 10
+   369→Agent: main
+   370→Task: Add biochar option to the credit calculator + management activities for permanent carbon storage boost.
+   371→
+   372→Work Log:
+   373→- Extended `src/lib/core/credits.ts` with biochar calculation:
+   374→  - Added 3 new optional fields to `CreditInput`: `biocharRateTPerHa`, `biocharCarbonPct` (default 70), `biocharStabilityFactor` (default 0.8).
+   375→  - Added 3 new fields to `CreditResult`: `biocharCo2eT`, `biocharCStockT`, `socGrossCo2eT`.
+   376→  - Exported new `computeBiocharCredits()` helper: C_persistent = rate × area × C_pct × BC+100, CO2e = C × 44/12 (per VCS Biochar Methodology + IPCC 2019 Refinement).
+   377→  - In `computeForRule()`: gross = socGross + biochar.co2eT — biochar adds to total credits before emissions/leakage/buffer/uncertainty deductions.
+   378→- Updated `/api/calculate/credits` route — automatically picks up the new fields via the CreditInput type.
+   379→- Updated `/api/dashboard/route.ts` — checks for `biochar_application` activity on the first farm and passes biocharRateTPerHa + carbonPct + stability to `compareAllStandards()` so the dashboard creditComparison reflects the biochar bonus when present.
+   380→- Updated Prisma schema comment for `ManagementActivity.activity` to include `biochar_application`.
+   381→- Added 25 new bilingual translations for biochar: title, enable toggle, full description (TH/EN), rate/source/carbonPct/stability inputs, stability hint, preview labels (C/ha, CO2e/ha, total), feedstock options (rice husk, wood, corn cob, manure).
+   382→- Updated `calculator-section.tsx` CreditsTab:
+   383→  - Added biochar state: `biocharEnabled`, `biocharRate`, `biocharCarbonPct`, `biocharStability`, `biocharSource`.
+   384→  - Built amber-themed biochar panel below the SOC sample field, with toggle switch + 4 inputs (rate, source, carbon%, stability).
+   385→  - Live preview box (gradient amber→emerald) showing C/ha, CO2e/ha, and total biochar CO2e based on current area.
+   386→  - Passes biochar fields to API when computing.
+   387→  - Updated result table: conditionally shows a new "Biochar" column (with Flame icon + amber text) when any standard's `biocharCo2eT > 0`. The cell shows `+32.853` (added) or `—` (none).
+   388→- Updated `seed.ts` to add a `biochar_application` activity to Nan-4 (Mixed Tea & Coffee — steepest slope, full design): applied 12.5 t/ha biochar from rice husk, with note "ใส่ biochar จากแกลบข้าว อัตรา 12.5 t/ha (C 70%, BC+100 = 0.80)".
+   389→
+   390→Stage Summary:
+   391→- Biochar option now available in the Credits tab of the Calculator:
+   392→  - Toggle switch (default OFF) — when ON, shows 4 inputs + live preview.
+   393→  - Default: 2 t/rai (= 12.5 t/ha), 70% C, 0.80 BC+100 stability.
+   394→  - For 50 ha farm (312.5 rai): adds 32.853 tCO₂e to total credits.
+   395→- Verified end-to-end via Agent Browser (TH mode):
+   396→  - Switch ON: live preview shows "C ถาวร/ไร่ 0.179 t C", "CO₂e/ไร่ 0.657 tCO₂e", "CO₂e รวมจาก biochar 32.9 tCO₂e".
+   397→  - Compute with biochar ON: result table shows new "Biochar" column with `+32.853` for all 4 standards.
+   398→  - T-VER net = 678.993 tCO₂e (up from 649.425 without biochar — gain of 29.568 tCO₂e after 10% buffer deduction).
+   399→  - Switch OFF: biochar column disappears, credits return to original values.
+   400→- Lint clean, dev server stable, page renders 200 OK.
+   401→
+   402→---
+   403→Task ID: 11
+   404→Agent: main
+   405→Task: Replace the hand-drawn SVG cross-section diagram with a realistic color photo + transparent SVG arrow overlay showing zigzag water flow.
+   406→
+   407→Work Log:
+   408→- Generated a photorealistic cross-section image of a highland terraced farm via z-ai image (1344×768, 276KB):
+   409→  - 4 terrace levels descending a mountain slope.
+   410→  - Brown loam soil terraces 1.5 m wide.
+   411→  - Dense deep-green vetiver grass clumps on outer bunds.
+   412→  - Small tea bushes and arabica coffee plants inside each terrace.
+   413→  - Mountain topographic background with golden hour lighting.
+   414→  - NO text, NO arrows, NO labels (arrows come from the overlay).
+   415→  - Saved as /public/plots/cross-section-photo.png.
+   416→- Created a transparent SVG overlay /public/plots/cross-section-overlay.svg (8.9KB) with:
+   417→  - Title strip at top: "ภาพตัดขวางของแปลงขั้นบรรได — น้ำไหลซิกแซกสลับซ้าย-ขวา"
+   418→  - 4 numbered arrows with badges 1, 3, 5, 7 (each on its own plot):
+   419→    - Plot 1 (top, y≈155): arrow #1 L→R + label "น้ำไหลซ้าย→ขวา (L→R)"
+   420→    - Plot 2 (y≈285): arrow #3 R→L + label "น้ำไหลขวา→ซ้าย (R→L)"
+   421→    - Plot 3 (y≈415): arrow #5 L→R + label "น้ำไหลซ้าย→ขวา (L→R)"
+   422→    - Plot 4 (bottom, y≈545): arrow #7 R→L + label "น้ำไหลขวา→ซ้าย (R→L)"
+   423→  - Drop arrows #2, #4, #6 with badges between plots:
+   424→    - #2: right side (from end of plot 1 down to start of plot 2)
+   425→    - #4: left side (from end of plot 2 down to start of plot 3)
+   426→    - #6: right side (from end of plot 3 down to start of plot 4)
+   427→  - Each arrow + badge has white outline for contrast against the photo.
+   428→  - Bottom legend strip (semi-transparent dark background) with full summary of all 4 plot directions.
+   429→- Updated `PlotDesignImage` helper in dashboard-section.tsx to accept an optional `overlaySrc` prop — renders the overlay as a second <img> absolutely positioned on top of the base image.
+   430→- Updated the cross-section PlotDesignImage call:
+   431→  - src: "/plots/cross-section-photo.png" (was "/plots/cross-section.png")
+   432→  - overlaySrc: "/plots/cross-section-overlay.svg"
+   433→  - title + caption unchanged.
+   434→- Old hand-drawn SVG + PNG kept on disk for reference (not referenced in UI anymore).
+   435→
+   436→Stage Summary:
+   437→- Cross-section gallery card now shows a photorealistic image of terraced highland farm (tea/coffee + vetiver grass + brown soil + mountain backdrop) with overlaid blue numbered arrows showing the exact zigzag water-flow pattern (L→R, R→L, L→R, R→L).
+   438→- Verified end-to-end via VLM (z-ai vision, glm-5v-turbo) using a screenshot of the gallery card from the browser:
+   439→  - (1) Photorealistic terraced farm image: YES
+   440→  - (2) Blue numbered arrows 1-7 visible: YES
+   441→  - (3) Plot 1 (top) arrow points right (L→R): YES
+   442→  - (4) Plot 2 arrow points left (R→L), alternating: YES
+   443→  - (5) Overall zigzag pattern L→R, R→L, L→R, R→L: YES
+   444→- Lint clean, dev server stable, page renders 200 OK, both image files served correctly (photo 281KB, overlay 8.9KB).
+   445→
+   446→---
+   447→Task ID: 12
+   448→Agent: main
+   449→Task: Add import menu for new farms/projects + conditional activity recording + IoT sensor data integration.
+   450→
+   451→Work Log:
+   452→- Added 3 new Prisma models:
+   453→  - IoTReading (sensorId, sensorType, value, unit, measuredAt, metadata, farmId FK)
+   454→  - ActivityRule (name, sensorType, operator, threshold, activity, enabled, cooldownHr, lastFiredAt, firedCount)
+   455→  - ImportLog (filename, source, rowsTotal/Ok/Failed, errors)
+   456→  - Linked all to Farm model via relations (iotReadings[], activityRules[]).
+   457→- Created 5 new API routes:
+   458→  - POST /api/iot/ingest — accepts single or batch IoT readings, evaluates all active rules, and auto-logs management activities when conditions are met (with cooldown check).
+   459→  - GET /api/iot — lists recent readings (filter by farmId/sensorType).
+   460→  - GET/POST /api/activities/rules — list and create conditional rules.
+   461→  - PATCH/DELETE /api/activities/rules/[ruleId] — toggle/update/delete rules.
+   462→  - POST /api/activities — manually log a new activity.
+   463→  - POST /api/farms/import — CSV text or JSON array → bulk-create farms (auto-detects header, builds GeoJSON from bbox, validates).
+   464→- Added 'import' to SectionId, sidebar nav (Upload icon), topbar labels, app-shell section switching.
+   465→- Built src/components/sections/import-section.tsx with 4 sub-tabs:
+   466→  1. **ข้อมูล IoT** — live readings table + "ส่งค่าจำลอง IoT" button (sends soil_moisture=15% to trigger the low-moisture rule) + endpoint info.
+   467→  2. **กฎอัตโนมัติ** — create new rule form (name, sensorType, operator, threshold, activity, cooldown) + existing rules list with toggle switch + firedCount/lastFired display.
+   468→  3. **กิจกรรมการจัดการ** — log new activity form + activities list (auto-fired activities tagged with [AUTO] badge).
+   469→  4. **นำเข้าแปลง** — CSV textarea (pre-filled with sample) + import button + result summary (total/ok/failed + error details).
+   470→- Seeded demo data: 12 IoT readings across 5 farms (soil_moisture, temperature, rainfall, humidity, ec) + 3 conditional rules (low moisture < 20%, heavy rainfall > 30mm, high temp > 35°C).
+   471→- Fixed Prisma client naming: model `IoTReading` → property `ioTReading` (capital T in camelCase conversion).
+   472→
+   473→Stage Summary:
+   474→- Full IoT pipeline works end-to-end:
+   475→  1. IoT sensor sends reading → POST /api/iot/ingest
+   476→  2. System saves reading + evaluates all active rules
+   477→  3. If condition matches + cooldown expired → auto-logs management activity with [IoT auto-fired] note
+   478→  4. Activity appears in Activities tab with [AUTO] badge
+   479→- Verified via Agent Browser:
+   480→  - 12 IoT readings visible in the IoT tab
+   481→  - 3 rules visible in the Rules tab (all enabled)
+   482→  - "ส่งค่าจำลอง IoT" button → sends soil_moisture=15% → toast "saved: 1, fired rules: 1"
+   483→  - API verification: new activity "fertiliser" on demo-farm-001 with note "[IoT auto-fired] Low soil moisture → auto-irrigation alert — soil_moisture = 15% (< 20)"
+   484→  - Rule firedCount incremented to 1, lastFiredAt set.
+   485→- CSV import: pre-filled with sample CSV (2 demo farms), import button creates farms via /api/farms/import.
+   486→- Lint clean, dev server stable, page renders 200 OK.
+   487→
+   488→---
+   489→Task ID: 13
+   490→Agent: main
+   491→Task: (1) Remove "add farm" button from Dashboard top — should be in sidebar only. (2) Clarify "พื้นที่กับดัก (m²)" label. (3) Fix per-farm trap data to be realistic.
+   492→
+   493→Work Log:
+   494→- Removed the "เพิ่มแปลงใหม่" button from the Dashboard's empty-state card. Replaced with a text-only message: "ไปที่เมนู 'แปลงเกษตร' ทางซ้ายเพื่อเพิ่มแปลงใหม่ พร้อมระบุพิกัดขอบเขตแปลงบนแผนที่" (EN: "Go to 'Farms' in the left sidebar to add a new farm with GPS boundary"). The Farms section remains the primary entry point for adding farms (accessible via sidebar nav).
+   495→- Updated sediment labels in translations (TH + EN):
+   496→  - "พื้นที่กับดัก (m²)" → "พื้นที่กับดักมอนิเตอร์ริ่ง (m²)" (Monitoring Trap Area — clarifies this is the physical monitoring structure, NOT the farm's total sediment-trap area)
+   497→  - "ความสูงตะกอน (cm)" → "ความสูงตะกอนสะสม (cm)" (Accumulated Sediment Depth — clearer that it's the depth of sediment accumulated in the trap)
+   498→  - EN equivalents updated too.
+   499→- Rewrote `computeRealisticSedimentTraps()` in seed.ts:
+   500→  - Trap physical area now VARIES per farm: `baseTrapArea = clamp(3, 6.5, 3 + areaHa/20)` — bigger farms have slightly bigger monitoring structures. Each trap also gets ±15% variation.
+   501→  - Monitoring catchment now varies per level: `(50 + i*3) / 10000` ha — upper levels have slightly larger catchments.
+   502→  - Trap IDs now use farm-specific codes: `DEMO`, `NAN01`, `NAN02`, `NAN03`, `NAN04` + level number (L01-L10) + trap type code (CD=CheckDam, VB=VetiverBund). Example: `NAN04-L07-CD` = Nan farm 4, Level 7, Check Dam trap.
+   503→  - Removed generic prefix "NA" / "DE" that was used before.
+   504→
+   505→Stage Summary:
+   506→- Dashboard no longer has any "add farm" button — the sidebar "แปลงเกษตร" nav item is the sole entry point.
+   507→- Sediment table column headers clarified:
+   508→  - "พื้นที่กับดักมอนิเตอร์ริ่ง (m²)" = physical monitoring trap area (3-6 m²)
+   509→  - "ความสูงตะกอนสะสม (cm)" = accumulated sediment depth in the trap (5-53 cm)
+   510→- Per-farm trap data is now realistic and unique per farm:
+   511→  - Demo (50 ha): 2 traps, DEMO-L01~L02-CD, area 4.7-6.3 m², depth 5 cm (min, flat)
+   512→  - Tea (32 ha): 9 traps, NAN01-L01~L09-CD, area 3.96-5.24 m², depth 17-26 cm
+   513→  - Coffee (25 ha): 10 traps, NAN02-L01~L10-CD, area 3.66-4.85 m², depth 27-41 cm
+   514→  - Rotation (40 ha): 7 traps, NAN03-L01~L07-CD, area 4.3-5.45 m², depth 9-12 cm
+   515→  - Mixed (28 ha): 10 traps, NAN04-L01~L10-CD, area 3.78-5.02 m², depth 34-53 cm
+   516→- Lint clean, dev server stable, page renders 200 OK.
+   517→
+   518→---
+   519→Task ID: 14
+   520→Agent: main
+   521→Task: Fix hydration mismatch error — "server rendered HTML didn't match the client".
+   522→
+   523→Work Log:
+   524→- Found 3 root causes of hydration mismatch:
+   525→  1. **`Math.random()` in vvb-section.tsx** (line 432) — generating a fake "chain head" hash during render. Server and client produce different random values → mismatch.
+   526→  2. **`calendar: "buddhist"` in i18n provider's `fmtDate`** — Node.js server doesn't support Buddhist calendar, causing it to silently fall back to Gregorian. Browser supports it. Server renders Gregorian year (2024), client renders Buddhist year (2567) → mismatch.
+   527→  3. **`new Date()` in useState initializers** — `useState(new Date().toISOString().slice(0, 10))` in 3 dialog components (import-section, sediment-form-dialog, sample-form-dialog). Server and client compute different dates if timezones differ.
+   528→  4. **`new Date().toLocaleString()` in vvb-section print header** — renders differently on server vs client.
+   529→  5. **`useI18n()` called inside JSX** in import-section.tsx (lines 68, 71, 74, 77) — violating React's Rules of Hooks. Each `useI18n()` call inside JSX creates a separate hook invocation, causing inconsistent render output.
+   530→
+   531→- Fixes applied:
+   532→  1. Replaced `Math.random()` hash display with deterministic text: `${audit.totalRecords} records verified`.
+   533→  2. Replaced `calendar: "buddhist"` with `calendar: "gregory"` + manual year adjustment (+543 for Thai). This produces the same Buddhist Era year on both server and client without relying on ICU calendar support.
+   534→  3. Replaced all `useState(new Date().toISOString().slice(0, 10))` with `useState("")` — the date is set later via user input or API response, not during initialization.
+   535→  4. Replaced `new Date().toLocaleString()` in print header with `data?.meta?.generatedAt ?? "—"` (from API response, consistent server/client).
+   536→  5. Moved `useI18n()` call from inside JSX to the top of `ImportSection` component: `const { t } = useI18n();` then used `t("import.tab.iot")` etc. in JSX.
+   537→
+   538→Stage Summary:
+   539→- All hydration errors eliminated — verified via Agent Browser with fresh browser session:
+   540→  - No errors in `agent-browser errors` output.
+   541→  - No hydration/mismatch messages in console.
+   542→  - All 9 sections (Dashboard, Farms, Samples, Sediment, Calculator, Standards, Audit, VVB, Import+IoT, Guide) navigate cleanly without errors.
+   543→- Lint clean, dev server stable, page renders 200 OK.
+   544→

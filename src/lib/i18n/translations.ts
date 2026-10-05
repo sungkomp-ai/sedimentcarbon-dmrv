@@ -129,6 +129,16 @@ export const TRANSLATIONS: Record<Locale, Record<string, string>> = {
     "calc.credits.compare": "เปรียบเทียบทุกมาตรฐาน",
     "calc.credits.single": "คำนวณมาตรฐานเดียว",
     "calc.credits.result": "ผลการคำนวณ",
+
+    "calc.farmSelect": "เลือกแปลงเพื่อเติมค่าอัตโนมัติ",
+    "calc.farmSelectLabel": "เลือกแปลง",
+    "calc.farmSelectCalc": "คำนวณจากข้อมูลแปลงจริง",
+    "calc.farmSelectEmpty": "— ยังไม่เลือกแปลง —",
+    "calc.farmSelectLoading": "กำลังโหลดแปลง…",
+    "calc.farmSelectNoSamples": "แปลงนี้ยังไม่มีตัวอย่างดิน ไม่สามารถเติมค่าอัตโนมัติได้",
+    "calc.farmSelectFilled": "เติมค่าจากข้อมูลแปลงจริงแล้ว",
+    "calc.farmSelectHint": "เลือกแปลงแล้วกดปุ่มด้านล่างเพื่อเติมค่า SOC พื้นที่ และตัวอย่างจากข้อมูลจริงของแปลงนั้น",
+
     "calc.biochar.title": "ใช้ Biochar เพิ่มการกักเก็บคาร์บอน",
     "calc.biochar.enable": "เปิดใช้งาน Biochar",
     "calc.biochar.descTitle": "ทำไม่ Biochar ถึงเพิ่มการกักเก็บคาร์บอน",
@@ -492,6 +502,16 @@ export const TRANSLATIONS: Record<Locale, Record<string, string>> = {
     "calc.credits.compare": "Compare All Standards",
     "calc.credits.single": "Single Standard",
     "calc.credits.result": "Calculation Result",
+
+    "calc.farmSelect": "Select farm to auto-fill",
+    "calc.farmSelectLabel": "Select farm",
+    "calc.farmSelectCalc": "Calculate from actual farm data",
+    "calc.farmSelectEmpty": "— No farm selected —",
+    "calc.farmSelectLoading": "Loading farms…",
+    "calc.farmSelectNoSamples": "No soil samples for this farm — cannot auto-fill",
+    "calc.farmSelectFilled": "Filled with actual farm data",
+    "calc.farmSelectHint": "Pick a farm and click the button below to fill SOC, area, and sample values from that farm's actual data.",
+
     "calc.biochar.title": "Use Biochar to boost carbon storage",
     "calc.biochar.enable": "Apply biochar",
     "calc.biochar.descTitle": "Why biochar boosts carbon storage",

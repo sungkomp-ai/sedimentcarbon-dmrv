@@ -66,10 +66,13 @@ export async function GET() {
   const baselineSoc = samples.filter((s) => s.isBaseline).map((s) => s.socPct);
   const currentSoc = samples.filter((s) => !s.isBaseline).map((s) => s.socPct);
 
-  // Build a credit-comparison snapshot if we have at least one farm with both
-  // baseline and current samples. Use the first farm for demo purposes.
+  // Build a credit-comparison snapshot using a farm with both baseline and
+  // current samples. Prefer a Nan highland farm (has biochar + full design).
   let comparison: ReturnType<typeof compareAllStandards> | null = null;
-  const firstFarm = farms[0];
+  const firstFarm =
+    farms.find((f) => f.id === "nan-farm-004") ??
+    farms.find((f) => f.id?.startsWith("nan-")) ??
+    farms[0];
   if (firstFarm) {
     const farmSamples = samples.filter((s) => s.farmId === firstFarm.id);
     const baseline = farmSamples.filter((s) => s.isBaseline).map((s) => s.socPct);

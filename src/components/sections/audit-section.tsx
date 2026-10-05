@@ -63,6 +63,22 @@ export function AuditSection() {
   const farms = farmsData?.farms ?? [];
   const selected = farmId || farms[0]?.id || "";
 
+  // Fetch audit summary for ALL farms
+  const { data: summaryData } = useQuery<{
+    farms: { farmId: string; farmNameTh: string; farmNameEn: string | null; standard: string | null; areaHa: number; sampleCount: number; totalRecords: number; valid: boolean; verifiedRecords: number; brokenAtIndex: number | null }[];
+    totalFarms: number;
+    totalRecords: number;
+    totalValid: number;
+    allValid: boolean;
+  }>({
+    queryKey: ["audit-summary"],
+    queryFn: async () => {
+      const r = await fetch("/api/audit/summary");
+      if (!r.ok) throw new Error("Failed");
+      return r.json();
+    },
+  });
+
   const { data, isLoading, refetch } = useQuery<AuditResponse>({
     queryKey: ["audit", selected],
     queryFn: async () => {
@@ -80,6 +96,60 @@ export function AuditSection() {
     <div className="space-y-6">
       <SectionHeader titleKey="audit.title" descriptionKey="warn.estimate" />
 
+      {/* Summary of ALL farms' audit status */}
+      {summaryData && (
+        <Card>
+          <CardHeader className="pb-3">
+            <CardTitle className="flex items-center gap-2 text-base">
+              <ShieldCheck className="h-4 w-4 text-emerald-600 dark:text-emerald-400" />
+              {locale === "th" ? "สถานะ Audit Trail ทุกแปลง" : "Audit Trail Status — All Farms"}
+              <Badge variant={summaryData.allValid ? "default" : "destructive"} className={summaryData.allValid ? "bg-emerald-600" : ""}>
+                {summaryData.totalValid}/{summaryData.totalFarms} {locale === "th" ? "ผ่าน" : "valid"}
+              </Badge>
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="p-0">
+            <div className="max-h-64 overflow-y-auto">
+              <Table>
+                <TableHeader className="sticky top-0 bg-card">
+                  <TableRow>
+                    <TableHead>{t("samples.farm")}</TableHead>
+                    <TableHead>{locale === "th" ? "มาตรฐาน" : "Standard"}</TableHead>
+                    <TableHead className="text-right">{locale === "th" ? "พื้นที่" : "Area"}</TableHead>
+                    <TableHead className="text-right">{locale === "th" ? "ตัวอย่างดิน" : "Samples"}</TableHead>
+                    <TableHead className="text-center">{locale === "th" ? "สถานะ" : "Status"}</TableHead>
+                    <TableHead className="text-right">{locale === "th" ? "ระเบียน" : "Records"}</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {summaryData.farms.map((f) => (
+                    <TableRow
+                      key={f.farmId}
+                      className={`cursor-pointer hover:bg-muted/50 ${selected === f.farmId ? "bg-emerald-50/60 dark:bg-emerald-950/20" : ""}`}
+                      onClick={() => setFarmId(f.farmId)}
+                    >
+                      <TableCell className="text-sm max-w-[200px] truncate">{f.farmNameTh}</TableCell>
+                      <TableCell><Badge variant="outline" className="text-[10px]">{f.standard ?? "—"}</Badge></TableCell>
+                      <TableCell className="text-right text-sm tabular-nums">{f.areaHa.toFixed(1)}</TableCell>
+                      <TableCell className="text-right text-sm tabular-nums">{f.sampleCount}</TableCell>
+                      <TableCell className="text-center">
+                        {f.valid ? (
+                          <ShieldCheck className="h-4 w-4 text-emerald-600 dark:text-emerald-400 inline" />
+                        ) : (
+                          <ShieldAlert className="h-4 w-4 text-red-600 dark:text-red-400 inline" />
+                        )}
+                      </TableCell>
+                      <TableCell className="text-right text-sm tabular-nums">{f.totalRecords}</TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Detailed view for selected farm */}
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2 text-base">

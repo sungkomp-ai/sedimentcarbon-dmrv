@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { useI18n } from "@/lib/i18n/provider";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -11,6 +12,13 @@ import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Slider } from "@/components/ui/slider";
 import { Switch } from "@/components/ui/switch";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
 import {
   Table,
@@ -33,6 +41,8 @@ import {
   ArrowUpRight,
   ArrowDownRight,
   Flame,
+  MapPin,
+  Database,
 } from "lucide-react";
 import { STANDARD_LIST } from "@/lib/core/standards";
 import { type CreditResult, computeBiocharCredits } from "@/lib/core/credits";
@@ -102,6 +112,19 @@ export function CalculatorSection() {
 }
 
 // -------- Credits Tab --------
+interface FarmOption {
+  id: string;
+  nameTh: string;
+  nameEn: string | null;
+  areaHa: number;
+}
+interface SoilSampleOption {
+  id: string;
+  socPct: number;
+  bulkDensity: number;
+  coarseFragPct: number;
+  isBaseline: boolean;
+}
 function CreditsTab() {
   const { t, fmt, fmtArea, isThai, haToRai, raiToHa } = useI18n();
   const { toast } = useToast();
@@ -124,28 +147,146 @@ function CreditsTab() {
   const [biocharSource, setBiocharSource] = useState<"riceHusk" | "wood" | "cornCob" | "manure">("riceHusk");
   const [comparison, setComparison] = useState<CreditResult[] | null>(null);
   const [loading, setLoading] = useState(false);
+  const [selectedFarmId, setSelectedFarmId] = useState("");
 
-  async function compute() {
+  // Farms list query (reuses the same query key as the Farms section so it
+  // benefits from React Query's shared cache).
+  const { data: farmsData, isLoading: farmsLoading } = useQuery<{ farms: FarmOption[] }>({
+    queryKey: ["farms"],
+    queryFn: async () => {
+      const r = await fetch("/api/farms");
+      if (!r.ok) throw new Error("Failed to load farms");
+      return r.json();
+    },
+  });
+  const farms = farmsData?.farms ?? [];
+
+  // Soil samples for the selected farm (only fetches once a farm is picked).
+  const { data: samplesData, isFetching: samplesFetching } = useQuery<{
+    samples: SoilSampleOption[];
+  }>({
+    queryKey: ["soil-samples", selectedFarmId],
+    enabled: !!selectedFarmId,
+    queryFn: async () => {
+      const r = await fetch(`/api/soil-samples?farmId=${selectedFarmId}`);
+      if (!r.ok) throw new Error("Failed to load soil samples");
+      return r.json();
+    },
+  });
+  const farmSamples = samplesData?.samples ?? [];
+
+  /**
+   * Compute a single SOC stock value (t C/ha) for a group of samples.
+   * Uses the formula from src/lib/core/soc.ts (matches the IPCC 2019 Refinement):
+   *   stock = (mean_soc_pct / 100) * bulk_density * 30 * (1 - coarse_frag_pct/100) * 100
+   * Mean is taken across all samples in the group.
+   */
+  function socStockFromSamples(group: SoilSampleOption[]): number {
+    if (group.length === 0) return 0;
+    const meanSoc = group.reduce((s, x) => s + x.socPct, 0) / group.length;
+    const meanBd = group.reduce((s, x) => s + x.bulkDensity, 0) / group.length;
+    const meanCf = group.reduce((s, x) => s + x.coarseFragPct, 0) / group.length;
+    return (meanSoc / 100) * meanBd * 30 * (1 - meanCf / 100) * 100;
+  }
+
+  /**
+   * Auto-fill baseline/current/area/samples from the selected farm's actual data,
+   * then immediately trigger compute(). All fields remain editable afterwards.
+   */
+  async function applyFarmData() {
+    if (!selectedFarmId) {
+      toast({
+        title: t("calc.farmSelectLabel"),
+        description: t("calc.farmSelect"),
+        variant: "destructive",
+      });
+      return;
+    }
+    const farm = farms.find((f) => f.id === selectedFarmId);
+    if (!farm) {
+      toast({ title: t("common.error"), description: "Farm not found", variant: "destructive" });
+      return;
+    }
+    if (farmSamples.length === 0) {
+      toast({
+        title: t("calc.farmSelectLabel"),
+        description: t("calc.farmSelectNoSamples"),
+        variant: "destructive",
+      });
+      return;
+    }
+    const baselineSamples = farmSamples.filter((s) => s.isBaseline);
+    const currentSamples = farmSamples.filter((s) => !s.isBaseline);
+    if (baselineSamples.length === 0 || currentSamples.length === 0) {
+      toast({
+        title: t("calc.farmSelectLabel"),
+        description: t("calc.farmSelectNoSamples"),
+        variant: "destructive",
+      });
+      return;
+    }
+    // Area in locale unit (rai for TH, ha for EN).
+    const newArea = isThai ? haToRai(farm.areaHa) : farm.areaHa;
+    const baselineStock = socStockFromSamples(baselineSamples);
+    const currentStock = socStockFromSamples(currentSamples);
+    const samplesStr = currentSamples.map((s) => s.socPct).join(", ");
+    const newBaseline = baselineStock.toFixed(2);
+    const newCurrent = currentStock.toFixed(2);
+    const newAreaStr = newArea.toFixed(2);
+
+    setBaseline(newBaseline);
+    setCurrent(newCurrent);
+    setArea(newAreaStr);
+    setSamples(samplesStr);
+    toast({
+      title: t("calc.farmSelectLabel"),
+      description: t("calc.farmSelectFilled"),
+    });
+    // Trigger compute immediately with the freshly filled values (avoids
+    // waiting for the next React state cycle before reading the new inputs).
+    await compute({
+      baseline: newBaseline,
+      current: newCurrent,
+      area: newAreaStr,
+      samples: samplesStr,
+    });
+  }
+
+  /**
+   * Compute credit comparison across all standards. Accepts optional overrides
+   * so that applyFarmData() can pass the freshly-filled values immediately,
+   * without waiting for React state to flush.
+   */
+  async function compute(overrides?: {
+    baseline?: string;
+    current?: string;
+    area?: string;
+    samples?: string;
+  }) {
     setLoading(true);
     try {
-      const areaHa = isThai ? raiToHa(Number(area)) : Number(area);
+      const b = overrides?.baseline ?? baseline;
+      const c = overrides?.current ?? current;
+      const a = overrides?.area ?? area;
+      const s = overrides?.samples ?? samples;
+      const areaHa = isThai ? raiToHa(Number(a)) : Number(a);
       const biocharRateTPerHa = biocharEnabled
         ? isThai
           ? raiToHa(Number(biocharRate))
           : Number(biocharRate)
         : 0;
       const body = {
-        socBaselineTHa: Number(baseline),
-        socCurrentTHa: Number(current),
+        socBaselineTHa: Number(b),
+        socCurrentTHa: Number(c),
         years: Number(years),
         areaHa,
         nFertiliserKgHaYr: Number(fertiliser) || 0,
         floodedDaysYr: Number(flooded) || 0,
         dieselLitreTotal: Number(diesel) || 0,
         leakageTco2e: Number(leakage) || 0,
-        socSamples: samples
+        socSamples: s
           .split(/[,\s]+/)
-          .map((s) => Number(s))
+          .map((x) => Number(x))
           .filter((n) => !Number.isNaN(n) && n > 0),
         // Biochar inputs (only when enabled)
         biocharRateTPerHa,
@@ -201,6 +342,56 @@ function CreditsTab() {
           <CardTitle className="text-base">{t("calc.credits.compare")}</CardTitle>
         </CardHeader>
         <CardContent className="space-y-3">
+          {/* Farm selector — auto-fill baseline/current/area/samples from the
+              selected farm's actual data. Optional; all fields remain
+              manually editable afterwards. */}
+          <div className="rounded-md border border-emerald-300 dark:border-emerald-800 bg-emerald-50/40 dark:bg-emerald-950/20 p-3 space-y-2.5">
+            <div className="flex items-center gap-2">
+              <MapPin className="h-4 w-4 text-emerald-600 dark:text-emerald-400" />
+              <span className="text-sm font-medium">{t("calc.farmSelectLabel")}</span>
+            </div>
+            <Select
+              value={selectedFarmId || "none"}
+              onValueChange={(v) => setSelectedFarmId(v === "none" ? "" : v)}
+            >
+              <SelectTrigger className="w-full">
+                <SelectValue placeholder={t("calc.farmSelect")} />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="none">{t("calc.farmSelectEmpty")}</SelectItem>
+                {farmsLoading ? (
+                  <div className="px-2 py-1.5 text-xs text-muted-foreground">
+                    {t("calc.farmSelectLoading")}
+                  </div>
+                ) : farms.length === 0 ? (
+                  <div className="px-2 py-1.5 text-xs text-muted-foreground">
+                    {t("common.none")}
+                  </div>
+                ) : (
+                  farms.map((f) => (
+                    <SelectItem key={f.id} value={f.id}>
+                      {isThai ? f.nameTh : (f.nameEn ?? f.nameTh)} ·{" "}
+                      {fmtArea(f.areaHa, { digits: 1 })}
+                    </SelectItem>
+                  ))
+                )}
+              </SelectContent>
+            </Select>
+            <p className="text-[10px] text-muted-foreground leading-relaxed">
+              {t("calc.farmSelectHint")}
+            </p>
+            <Button
+              type="button"
+              variant="secondary"
+              onClick={applyFarmData}
+              disabled={!selectedFarmId || samplesFetching || loading}
+              className="w-full gap-2"
+            >
+              <Database className="h-4 w-4" />
+              {samplesFetching ? t("common.loading") : t("calc.farmSelectCalc")}
+            </Button>
+          </div>
+
           <div className="grid grid-cols-2 gap-3">
             <Field label={t("calc.credits.baseline")} value={baseline} onChange={setBaseline} />
             <Field label={t("calc.credits.current")} value={current} onChange={setCurrent} />
@@ -293,7 +484,7 @@ function CreditsTab() {
             </div>
           </div>
 
-          <Button onClick={compute} disabled={loading} className="w-full gap-2">
+          <Button onClick={() => compute()} disabled={loading} className="w-full gap-2">
             <CalcIcon className="h-4 w-4" /> {loading ? t("common.loading") : t("calc.credits.compare")}
           </Button>
           <p className="text-xs text-muted-foreground">{t("warn.estimate")}</p>

@@ -541,3 +541,84 @@ Stage Summary:
   - No hydration/mismatch messages in console.
   - All 9 sections (Dashboard, Farms, Samples, Sediment, Calculator, Standards, Audit, VVB, Import+IoT, Guide) navigate cleanly without errors.
 - Lint clean, dev server stable, page renders 200 OK.
+
+---
+Task ID: 1
+Agent: subagent
+Task: Add farm selector to calculator CreditsTab
+
+Work Log:
+- Read prior worklog (Tasks 1-14) to understand the codebase context, especially Tasks 2 (rai/ha conversion + i18n helpers), 4 (dMRV finance panel), and 10 (biochar panel in CreditsTab).
+- Inspected `/api/farms` (GET returns `{ farms: [{ id, nameTh, nameEn, areaHa, ... }] }`) and `/api/soil-samples?farmId=X` (GET returns `{ samples: [{ id, socPct, bulkDensity, coarseFragPct, isBaseline, ... }] }`).
+- Confirmed `useQuery` from `@tanstack/react-query` is already wired up project-wide via `src/components/query-provider.tsx` and used in `farms-section.tsx` + `samples-section.tsx` with query keys `["farms"]` and `["soil-samples", farmId]` — reused the same cache keys.
+- Confirmed the SOC stock formula `(socPct/100) × BD × depthCm × (1 − cf/100) × 100` matches the existing engine in `src/lib/core/soc.ts` (`stockPerHa`).
+- Added 8 new bilingual translation keys to `src/lib/i18n/translations.ts` (in both `th` and `en` blocks, inserted right after `calc.credits.result` and before `calc.biochar.*`):
+  - `calc.farmSelect`         — TH: "เลือกแปลงเพื่อเติมค่าอัตโนมัติ" / EN: "Select farm to auto-fill" (placeholder, per task spec)
+  - `calc.farmSelectLabel`    — TH: "เลือกแปลง" / EN: "Select farm" (label, per task spec)
+  - `calc.farmSelectCalc`     — TH: "คำนวณจากข้อมูลแปลงจริง" / EN: "Calculate from actual farm data" (button, per task spec)
+  - `calc.farmSelectEmpty`    — TH: "— ยังไม่เลือกแปลง —" / EN: "— No farm selected —" (de-select option)
+  - `calc.farmSelectLoading`  — TH: "กำลังโหลดแปลง…" / EN: "Loading farms…"
+  - `calc.farmSelectNoSamples`— TH: "แปลงนี้ยังไม่มีตัวอย่างดิน ไม่สามารถเติมค่าอัตโนมัติได้" / EN: "No soil samples for this farm — cannot auto-fill"
+  - `calc.farmSelectFilled`   — TH: "เติมค่าจากข้อมูลแปลงจริงแล้ว" / EN: "Filled with actual farm data"
+  - `calc.farmSelectHint`     — TH/EN descriptive hint pointing user to pick a farm then click the button.
+- Modified `src/components/sections/calculator-section.tsx`:
+  - Imported `useQuery` from `@tanstack/react-query`, the shadcn `Select` family (`Select, SelectContent, SelectItem, SelectTrigger, SelectValue`), and two new lucide icons (`MapPin`, `Database`).
+  - Added two new module-level interfaces above the `CreditsTab` function: `FarmOption` (id/nameTh/nameEn/areaHa) and `SoilSampleOption` (id/socPct/bulkDensity/coarseFragPct/isBaseline) — typed narrowly to only the fields the tab actually consumes.
+  - Added `selectedFarmId` state + two `useQuery` calls inside `CreditsTab`:
+    - `["farms"]` query (reuses the shared cache key, so navigating to Farms first warms this tab too).
+    - `["soil-samples", selectedFarmId]` query (gated with `enabled: !!selectedFarmId` so we only hit the API after the user picks a farm).
+  - Added `socStockFromSamples(group)` helper that applies the exact formula the task specified: `(mean_soc_pct / 100) × mean_bulk_density × 30 × (1 − mean_coarse_frag_pct/100) × 100` — means are computed across all samples in the group (baseline vs current).
+  - Refactored `compute()` to accept an optional `overrides?: { baseline?, current?, area?, samples? }` argument. When called with no args it reads from state (preserves the existing "Compare All Standards" button behavior). When called from `applyFarmData()` it receives the freshly-computed values so it doesn't have to wait a React render cycle for state to flush — this avoids the classic race where `setBaseline(x); compute();` would compute with the stale value.
+  - Added `applyFarmData()` async function that:
+    1. Guards against empty `selectedFarmId`, missing farm, missing samples, or missing baseline/current sub-groups (each path shows a localized toast).
+    2. Computes `newArea = isThai ? haToRai(farm.areaHa) : farm.areaHa` (so TH shows rai, EN shows ha — matches the locale-aware pattern already used throughout the app).
+    3. Computes `baselineStock` and `currentStock` via `socStockFromSamples()` for the baseline and current sample groups respectively.
+    4. Builds `samplesStr` as a comma-separated list of the current samples' `socPct` values.
+    5. `setBaseline/setCurrent/setArea/setSamples` with the new values (so the user sees the auto-filled inputs).
+    6. Fires a success toast, then `await compute({ baseline, current, area, samples })` to immediately compute credits from the auto-filled values.
+  - Inserted a new emerald-accented "farm selector" panel at the very top of the CreditsTab form `CardContent`, above the existing inputs grid. The panel contains:
+    - A `MapPin` icon + label "เลือกแปลง / Select farm".
+    - A shadcn `Select` dropdown with placeholder `calc.farmSelect`, a "— No farm selected —" de-select item (value `"none"`, mapped to `""` in state), and one item per farm showing `{farmName} · {areaHa fmtArea}`. Loading and empty states render inline text inside the dropdown content.
+    - A descriptive hint paragraph (`calc.farmSelectHint`).
+    - A `variant="secondary"` button labeled "คำนวณจากข้อมูลแปลงจริง / Calculate from actual farm data" with the `Database` icon. Button is disabled until a farm is selected, while samples are fetching, or while compute is running. Clicking it calls `applyFarmData()`.
+  - Updated the existing "Compare All Standards" button's `onClick={compute}` to `onClick={() => compute()}` because `compute()` now accepts an optional overrides object that doesn't accept the React `MouseEvent` (TypeScript's `MouseEventHandler` was incompatible with the overrides param). All four other tab `compute()` functions are unaffected (they take no args).
+  - Left the existing biochar panel and finance dMRV panel completely untouched — the farm selector is purely additive and sits above the existing input grid.
+
+Stage Summary:
+- Calculator's CreditsTab now offers an optional farm selector dropdown at the top of the form.
+- Picking a farm and clicking "คำนวณจากข้อมูลแปลงจริง" auto-fills:
+  - `area` with the farm's areaHa converted to the locale unit (rai for TH, ha for EN).
+  - `baseline` SOC stock computed from the farm's `isBaseline:true` samples using the project's standard IPCC formula `(mean_soc_pct/100) × mean_BD × 30 × (1 − mean_CF/100) × 100`.
+  - `current` SOC stock from the farm's `isBaseline:false` samples using the same formula.
+  - `samples` field with the comma-separated SOC %C values from the current samples.
+- Auto-fill triggers `compute()` immediately (via overrides, so no stale-state race), so the right-hand results panel updates in a single click.
+- All four input fields remain fully editable after auto-fill; selecting "— No farm selected —" clears the dropdown without disturbing the inputs.
+- Added 8 bilingual translation keys (TH + EN) covering the dropdown placeholder, label, button, empty/loading/no-samples/filled/hint states.
+- Lint (`bun run lint`) passes clean. TypeScript check (`bunx tsc --noEmit`) reports no errors in `calculator-section.tsx` or `translations.ts` (the pre-existing errors in unrelated files like `iot/ingest/route.ts`, `dashboard-section.tsx`, `sample-form-dialog.tsx` were there before this task — verified by stashing the changes and re-running `tsc`).
+- Dev server left untouched (per task instructions); the modified module is client-side and Next.js will hot-reload on next request.
+
+---
+Task ID: 15
+Agent: main + subagent
+Task: Make every menu have connected data — all sections should reference real farm data and cross-link to each other.
+
+Work Log:
+- **Calculator** (via subagent): Added farm selector dropdown to CreditsTab. When a farm is selected, auto-fills SOC baseline, current values, area (locale-aware rai/ha), and SOC samples from the farm's actual soil-sample data via /api/farms + /api/soil-samples. Added "คำนวณจากข้อมูลแปลงจริง" button that triggers compute with the filled values.
+- **Dashboard**: Fixed credit comparison to prefer nan-farm-004 (has biochar + full design) instead of demo-farm-001 (flat, no biochar). Now shows realistic Nan highland credits with biochar bonus.
+- **Audit**: Added `/api/audit/summary` endpoint that returns all farms' audit chain status in one query. Updated AuditSection UI to show a summary table at the top with ALL farms (name, standard, area, samples, status icon, record count). Clicking a row selects that farm for the detailed chain view below. Shows "5/5 ผ่าน" badge.
+- **Standards**: Added `useQuery` to fetch all farms. Each standard card now shows a green badge with farm count (e.g., "3 แปลง" for TVER) + lists the farm names that use that standard as secondary badges.
+- **Guide**: Added `useQuery` to fetch dashboard data. Shows a "สถิติระบบปัจจุบัน" (Current System Statistics) card at the top with 5 KPIs: farms (5), total area (175 ha), soil samples (60), sediment retained (40,940 t), total credits (tCO₂e).
+
+Stage Summary:
+- All 10 menu sections now have data that's connected and cross-referenced:
+  - Dashboard → shows all 5 farms on map + KPIs + charts + credit comparison from Nan farm
+  - Farms → each card shows samples, sediment, activities, crops, elevation
+  - Samples → linked to farm + plot + audit hash
+  - Sediment → per-farm breakdown table + per-trap detail with farm-specific IDs
+  - Calculator → farm selector auto-fills from real farm data
+  - Standards → each standard shows farm count + farm names using it
+  - Audit → summary table of ALL farms' chain status + detailed view per farm
+  - VVB → verification rounds + evidence (audit + sediment + credits) per farm
+  - Import+IoT → IoT readings link to farms + rules fire activities
+  - Guide → shows actual system statistics (farms/area/samples/sediment/credits)
+- Lint clean, dev server stable, page renders 200 OK, all sections verified via Agent Browser.

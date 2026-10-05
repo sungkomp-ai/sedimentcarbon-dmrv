@@ -1,5 +1,6 @@
 "use client";
 
+import { useQuery } from "@tanstack/react-query";
 import { useI18n } from "@/lib/i18n/provider";
 import { SectionHeader } from "./section-header";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -13,17 +14,38 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { STANDARD_LIST } from "@/lib/core/standards";
-import { ShieldCheck, CheckCircle2, XCircle, ExternalLink } from "lucide-react";
+import { ShieldCheck, CheckCircle2, XCircle, ExternalLink, MapPin } from "lucide-react";
+
+interface Farm {
+  id: string;
+  nameTh: string;
+  nameEn: string | null;
+  areaHa: number;
+  standard: string | null;
+}
 
 export function StandardsSection() {
   const { t, locale } = useI18n();
+
+  // Fetch all farms to show which farms use which standard
+  const { data: farmsData } = useQuery<{ farms: Farm[] }>({
+    queryKey: ["farms"],
+    queryFn: async () => {
+      const r = await fetch("/api/farms");
+      if (!r.ok) throw new Error("Failed");
+      return r.json();
+    },
+  });
+  const farms = farmsData?.farms ?? [];
 
   return (
     <div className="space-y-6">
       <SectionHeader titleKey="standards.title" descriptionKey="warn.estimate" />
 
       <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-        {STANDARD_LIST.map((s) => (
+        {STANDARD_LIST.map((s) => {
+          const standardFarms = farms.filter((f) => f.standard === s.code);
+          return (
           <Card key={s.code} className="overflow-hidden">
             <div
               className="h-1.5 w-full"
@@ -32,9 +54,17 @@ export function StandardsSection() {
             <CardHeader className="pb-2">
               <CardTitle className="flex items-center justify-between">
                 <span className="text-base">{s.code}</span>
-                <Badge variant="outline" className="text-xs">
-                  Buffer {(s.bufferPct * 100).toFixed(0)}%
-                </Badge>
+                <div className="flex items-center gap-1">
+                  {standardFarms.length > 0 && (
+                    <Badge className="text-[10px] bg-emerald-600 gap-0.5">
+                      <MapPin className="h-2.5 w-2.5" />
+                      {standardFarms.length} {locale === "th" ? "แปลง" : "farms"}
+                    </Badge>
+                  )}
+                  <Badge variant="outline" className="text-xs">
+                    Buffer {(s.bufferPct * 100).toFixed(0)}%
+                  </Badge>
+                </div>
               </CardTitle>
               <p className="text-xs text-muted-foreground">
                 {locale === "th" ? s.labelTh : s.labelEn}
@@ -53,6 +83,20 @@ export function StandardsSection() {
                 <span className="text-muted-foreground">{t("standards.uncertainty")}</span>
                 <span className="font-medium tabular-nums">≤ {s.uncertaintyThresholdPct}%</span>
               </div>
+              {standardFarms.length > 0 && (
+                <div className="pt-2 border-t mt-2">
+                  <div className="text-[10px] text-muted-foreground mb-1">
+                    {locale === "th" ? "แปลงที่ใช้มาตรฐานนี้" : "Farms using this standard"}
+                  </div>
+                  <div className="flex flex-wrap gap-1">
+                    {standardFarms.map((f) => (
+                      <Badge key={f.id} variant="secondary" className="text-[9px] truncate max-w-[120px]">
+                        {f.nameTh}
+                      </Badge>
+                    ))}
+                  </div>
+                </div>
+              )}
             </CardContent>
             {s.registryUrl && (
               <div className="border-t px-4 py-2">
@@ -67,7 +111,8 @@ export function StandardsSection() {
               </div>
             )}
           </Card>
-        ))}
+          );
+        })}
       </div>
 
       <Card>
