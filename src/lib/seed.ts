@@ -101,8 +101,8 @@ const FARMS: SeedFarm[] = [
     nameEn: "Highland Tea Farm — Ban Pa Kho, Mae Charim, Nan",
     groupId: "nan-group-001",
     // ~5 ha block at ~19.05°N, 100.85°E, elevation ~1100m
-    bbox: [100.8310, 19.0410, 100.8366, 19.0474],
-    areaHa: 5.2,
+    bbox: [100.8180, 19.0320, 100.8510, 19.0580],
+    areaHa: 32.0,
     slopePct: 28,
     elevationM: 1100,
     soilType: "Haplic Acrisols (highland red-yellow loam)",
@@ -142,8 +142,8 @@ const FARMS: SeedFarm[] = [
     nameEn: "Arabica Coffee Farm — Ban Bo, Pua, Nan",
     groupId: "nan-group-001",
     // ~4 ha block at ~19.70°N, 100.62°E, elevation ~1250m
-    bbox: [100.6170, 19.6910, 100.6222, 19.6956],
-    areaHa: 4.0,
+    bbox: [100.6090, 19.6840, 100.6320, 19.7030],
+    areaHa: 25.0,
     slopePct: 35,
     elevationM: 1250,
     soilType: "Humic Acrisols (highland dark loam)",
@@ -182,8 +182,8 @@ const FARMS: SeedFarm[] = [
     nameEn: "Rotation Crops Farm — Ban Nai, Santi Suk, Nan",
     groupId: "nan-group-001",
     // ~7 ha block at ~18.88°N, 100.75°E, elevation ~600m
-    bbox: [100.7430, 18.8750, 100.7510, 18.8810],
-    areaHa: 7.0,
+    bbox: [100.7310, 18.8640, 100.7650, 18.8920],
+    areaHa: 40.0,
     slopePct: 18,
     elevationM: 600,
     soilType: "Ferric Acrisols (rolling upland loam)",
@@ -225,8 +225,8 @@ const FARMS: SeedFarm[] = [
     nameEn: "Mixed Tea & Coffee — Ban Phu Ka, Bo Kluea, Nan",
     groupId: "nan-group-001",
     // ~6 ha block at ~19.18°N, 101.05°E, elevation ~1400m
-    bbox: [101.0410, 19.1760, 101.0470, 19.1818],
-    areaHa: 6.5,
+    bbox: [101.0280, 19.1650, 101.0620, 19.1930],
+    areaHa: 28.0,
     slopePct: 40,
     elevationM: 1400,
     soilType: "Andic Acrisols (volcanic-derived highland soil)",
@@ -281,54 +281,74 @@ function buildPolygonFromBbox(bbox: [number, number, number, number]): string {
 /**
  * Compute realistic sediment trap measurements for a farm.
  *
- * Each farm has N monitoring plots. We place one sediment trap per plot.
- * The trap is a small physical structure (3-6 m²) placed at the outlet of
- * a small sub-plot (catchment ~ 50 m², sized 0.5% of the per-plot catchment).
+ * Each highland farm has 7-10 terrace LEVELS (one per contour band), and
+ * we place one sediment trap per level. The trap is a small physical
+ * structure (3-6 m²) monitoring a small sub-catchment (~50-100 m²) at the
+ * level's outlet. The trap's deltaH is the realistic depth of sediment
+ * accumulated in the trap structure (5-35 cm range).
  *
- * Sediment mass captured per trap =
- *   erosion_rate_t_per_ha_yr × trap_catchment_ha × trapping_efficiency × years × variation
- *
- * Sediment volume (m³) = mass_t / bulk_density_t_per_m3
- * Sediment depth (cm) = volume / trap_physical_area × 100
- *
- * Typical depths range from 5 cm (low erosion) to ~40 cm (steep + high erosion),
- * which matches real sediment-trap field measurements on highland farms.
+ * The TOTAL farm sediment (across all 7-10 levels) is computed separately
+ * using erosion × area × efficiency × years — see sediment-estimate.ts.
+ * That's the BIG realistic total. The trap measurements here are just a
+ * SAMPLE for monitoring/verification.
  */
 function computeRealisticSedimentTraps(farm: SeedFarm): {
   trapId: string;
   areaM2: number;
   deltaHcm: number;
 }[] {
-  const numPlots = Math.min(farm.baselineSoc.length, 6);
-  const farmAreaM2 = farm.areaHa * 10000;
-  const perPlotCatchmentM2 = farmAreaM2 / numPlots;
-  // Trap physical area: ~0.5% of per-plot catchment, clamped to [3, 6] m²
-  const trapPhysicalM2 = Math.max(3, Math.min(6, perPlotCatchmentM2 * 0.005));
-  // Trap catchment: 50-100 m² (small sub-plot whose runoff drains to this trap)
-  // Larger farms → slightly larger catchment per trap
-  const trapCatchmentHa = (50 + Math.min(50, farm.areaHa * 2)) / 10000;
-  // Years of accumulation (project age ≈ 5 yr)
-  const years = 5;
+  // Determine number of terrace levels (= number of traps)
+  let numTraps: number;
+  if ((farm.slopePct ?? 0) < 8) {
+    // Flat lowland — no terraces, just a few check dams
+    numTraps = Math.max(1, Math.min(2, Math.floor(farm.areaHa / 25)));
+  } else if ((farm.slopePct ?? 0) < 15) {
+    // Gentle slope — 2-4 traps
+    numTraps = Math.max(2, Math.min(4, Math.floor(farm.areaHa / 8)));
+  } else {
+    // Highland — 7-10 levels based on slope
+    const base = 7;
+    const bonus = Math.floor(((farm.slopePct ?? 0) - 15) / 5);
+    numTraps = Math.min(10, base + bonus);
+  }
+
+  // Trap physical area: small structure (3-6 m²) at the level outlet
+  const trapPhysicalM2 = 4;
+
+  // Each trap monitors a SMALL sub-catchment (~50-100 m²) at its level's
+  // outlet. This is the standard sediment-trap monitoring design — the
+  // trap's catchment is small, so depth stays realistic (5-35 cm).
+  // The trap captures only a sample; the BIG farm total is computed
+  // separately in sediment-estimate.ts.
+  const trapCatchmentHa = 0.005; // 50 m²
   const sedBulkDensity = 1.3;
+  const years = 5;
+
   const traps: { trapId: string; areaM2: number; deltaHcm: number }[] = [];
-  for (let i = 0; i < numPlots; i++) {
+  const farmPrefix =
+    farm.id === "demo-farm-001"
+      ? "DE"
+      : farm.id.split("-")[0].toUpperCase().slice(0, 2) || "T";
+
+  for (let i = 0; i < numTraps; i++) {
     // ±15% per-trap variation for realism
     const variation = 1 + ((i * 7 + 3) % 30 - 15) / 100;
-    const sedimentMassT =
+    // Mass of sediment captured by this trap's small monitoring catchment
+    const sampleMassT =
       farm.erosionRateTPerHaYr *
       trapCatchmentHa *
       farm.trappingEfficiency *
       years *
       variation;
-    const sedimentVolumeM3 = sedimentMassT / sedBulkDensity;
-    // Depth in cm, rounded to 1 decimal place, minimum 5 cm
+    const sampleVolumeM3 = sampleMassT / sedBulkDensity;
+    // Depth = volume / trap_physical_area (in cm), capped at minimum 5 cm
     const deltaHcm = Math.max(
       5,
-      Math.round((sedimentVolumeM3 / trapPhysicalM2) * 100 * 10) / 10
+      Math.round((sampleVolumeM3 / trapPhysicalM2) * 100 * 10) / 10
     );
     traps.push({
-      trapId: `${farm.id.split("-")[0].toUpperCase().slice(0, 2) || "T"}${i + 1}-TRAP-${String(i + 1).padStart(2, "0")}`,
-      areaM2: Math.round(trapPhysicalM2 * 100) / 100,
+      trapId: `${farmPrefix}-L${String(i + 1).padStart(2, "0")}-TRAP`,
+      areaM2: trapPhysicalM2,
       deltaHcm,
     });
   }

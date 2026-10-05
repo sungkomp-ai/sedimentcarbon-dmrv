@@ -321,3 +321,45 @@ Stage Summary:
 - VVB section has 3 sub-tabs: Rounds (validation + per-cycle verifications), Evidence (audit trail + sediment + samples + activities + credit calc), Report (full comprehensive modal).
 - Comprehensive report modal supports print-to-PDF via window.print(), with all project data, baseline + current samples, monitoring data, credit calculation table, financial analysis (with dMRV benefit), audit trail status, and all verification rounds with VVB findings + statements.
 - Lint clean, dev server stable, page renders 200 OK, all API endpoints return correct data.
+
+---
+Task ID: 9
+Agent: main
+Task: Make sediment-trap amounts realistic per plot area + slope + design. The displayed totals should be the BIG total across all 7-10 terrace levels, not just the small sample captured in monitoring traps.
+
+Work Log:
+- Created `src/lib/sediment-estimate.ts` with helpers:
+  - `estimateErosionFromSlope()` — USLE-style lookup: 5 t/ha/yr (flat) → 120 t/ha/yr (extreme slope).
+  - `estimateTrappingEfficiency()` — sum of design components (terrace_step +0.18, vetiver_bund +0.15, check_dam +0.10, alternating_slope +0.08, etc.), capped at 0.85.
+  - `computeNumTerraceLevels()` — flat: 1-2; gentle: 2-4; highland: 7-10 based on slope.
+  - `computeEstimatedSedimentTotal()` — computes the BIG total = erosion × area × efficiency × project_age (covers all 7-10 levels) + the small monitoring-trap sample.
+- Updated seed.ts:
+  - Increased Nan farm areas (more realistic for community-managed highland): tea 5.2→32 ha, coffee 4→25 ha, rotation 7→40 ha, mixed 6.5→28 ha. Demo stays 50 ha (flat).
+  - Rewrote `computeRealisticSedimentTraps()`:
+    - numTraps = 7-10 for highland (one per terrace level), 2-4 for gentle, 1-2 for flat.
+    - Per-trap physical area: 4 m² (small monitoring structure).
+    - Per-trap monitoring catchment: 50 m² (small sub-catchment at level's outlet).
+    - Per-trap depth = erosion × small_catchment × efficiency × years × variation / (bulk_density × trap_area) → realistic 5-43 cm range.
+    - Trap IDs: `DE-L01-TRAP`, `NA-L09-TRAP` etc. (L = level number).
+- Updated `/api/sediment/route.ts` GET to return:
+  - `measurements` (per-trap data with depths — small sample)
+  - `farmTotals` (per-farm breakdown: sample + estimated BIG total + terrace levels)
+  - `aggregate` (cross-farm totals: sample volume/mass + estimated BIG total)
+- Updated `/api/dashboard/route.ts` to also return `estimatedSediment` (BIG totals across all farms).
+- Rewrote `sediment-section.tsx` UI:
+  - Top card: BIG estimated total (gradient emerald→violet) with 4 KPIs (volume/mass/C/CO2e) + "38 ชั้น terrace" badge.
+  - Middle card: per-farm breakdown table (8 columns: แปลง, พื้นที่, ความชัน, ชั้น, Traps, ตะกอน/ชั้น, รวม (t), CO₂e (t)).
+  - Bottom card (dashed border): "ตัวอย่างที่จับในกับดักมอนิเตอร์ริ่ง" — small sample with note explaining it's a verification sample.
+  - Trap detail table unchanged.
+
+Stage Summary:
+- All farms now show realistic BIG totals (computed via USLE erosion × area × efficiency × years, summing all 7-10 terrace levels):
+  - Demo (50 ha, 3.5% slope): 1,816 t = 1,397 m³ (across 2 levels)
+  - Tea (32 ha, 28%): 8,275 t = 6,366 m³ (across 9 levels, 920 t/level)
+  - Coffee (25 ha, 35%): 9,951 t = 7,654 m³ (across 10 levels, 995 t/level)
+  - Rotation (40 ha, 18%): 5,527 t = 4,251 m³ (across 7 levels, 790 t/level)
+  - Mixed (28 ha, 40%): 15,370 t = 11,823 m³ (across 10 levels, 1,537 t/layer)
+  - **Total: 40,938 t = 31,491 m³, 573.1 t C = 2,102 tCO₂e across 38 levels**
+- Per-trap depths remain realistic (5-43 cm), scaling with slope and erosion.
+- Sample captured in monitoring traps (small): 36.27 m³ = 47 t — clearly labeled as verification sample.
+- Lint clean, dev server stable, page renders 200 OK.

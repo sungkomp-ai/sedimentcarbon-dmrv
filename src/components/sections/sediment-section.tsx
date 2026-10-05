@@ -36,7 +36,7 @@ interface Sediment {
 }
 
 export function SedimentSection() {
-  const { t, fmt, fmtDate } = useI18n();
+  const { t, fmt, fmtDate, locale } = useI18n();
   const { selectedFarmId } = useApp();
   const [dialogOpen, setDialogOpen] = useState(false);
 
@@ -49,7 +49,40 @@ export function SedimentSection() {
     },
   });
 
-  const { data, isLoading } = useQuery<{ measurements: Sediment[] }>({
+  interface SedimentApiResponse {
+    measurements: Sediment[];
+    farmTotals: {
+      farmId: string;
+      farmNameTh: string;
+      farmNameEn: string | null;
+      areaHa: number;
+      slopePct: number | null;
+      trapCount: number;
+      sample: { volumeM3: number; massT: number; carbonT: number; co2eT: number };
+      estimated: {
+        baselineErosionTPerHaYr: number;
+        trappingEfficiency: number;
+        projectYears: number;
+        numTerraceLevels: number;
+        perLayerSedimentT: number;
+        totalSedimentT: number;
+        totalVolumeM3: number;
+        totalCarbonT: number;
+        totalCo2eT: number;
+        sampleRatio: number;
+      };
+    }[];
+    aggregate: {
+      sampleVolumeM3: number;
+      sampleMassT: number;
+      estimatedSedimentT: number;
+      estimatedVolumeM3: number;
+      estimatedCarbonT: number;
+      estimatedCo2eT: number;
+    };
+  }
+
+  const { data, isLoading } = useQuery<SedimentApiResponse>({
     queryKey: ["sediment", selectedFarmId],
     queryFn: async () => {
       const url = selectedFarmId
@@ -70,6 +103,21 @@ export function SedimentSection() {
     socPct: m.sedSocPct,
   }));
   const totals = totalSediment(traps);
+  // Sum estimated totals from farmTotals (filtered to selectedFarmId if set)
+  const farmTotals = data?.farmTotals ?? [];
+  const agg = data?.aggregate ?? {
+    sampleVolumeM3: totals.volumeM3,
+    sampleMassT: totals.massT,
+    estimatedSedimentT: 0,
+    estimatedVolumeM3: 0,
+    estimatedCarbonT: 0,
+    estimatedCo2eT: 0,
+  };
+  const totalLevels = farmTotals.reduce(
+    (s, f) => s + f.estimated.numTerraceLevels,
+    0
+  );
+  const totalTraps = farmTotals.reduce((s, f) => s + f.trapCount, 0);
 
   return (
     <div className="space-y-6">
@@ -79,61 +127,169 @@ export function SedimentSection() {
         </Button>
       </SectionHeader>
 
-      {/* Totals */}
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+      {/* Estimated total — BIG realistic number across all 7-10 levels per farm */}
+      <Card className="border-emerald-300 dark:border-emerald-900 bg-gradient-to-br from-emerald-50 to-violet-50/50 dark:from-emerald-950/30 dark:to-violet-950/20">
+        <CardHeader className="pb-3">
+          <CardTitle className="flex items-center gap-2 text-base">
+            <Mountain className="h-4 w-4 text-emerald-600 dark:text-emerald-400" />
+            {locale === "th"
+              ? "ปริมาณตะกอนรวมที่ดักไว้บนทั้งแปลง (คำนวณจาก 7-10 ชั้น terrace)"
+              : "Total sediment retained on farm (computed across 7-10 terrace levels)"}
+            <Badge variant="outline" className="text-amber-700 dark:text-amber-300 border-amber-300 dark:border-amber-700">
+              {totalLevels} {locale === "th" ? "ชั้น" : "levels"}
+            </Badge>
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
+            <div>
+              <div className="text-xs text-muted-foreground">{locale === "th" ? "ปริมาตรรวม" : "Total volume"}</div>
+              <div className="text-3xl font-bold tabular-nums text-emerald-600 dark:text-emerald-400">
+                {fmt(agg.estimatedVolumeM3, { maximumFractionDigits: 0 })}
+              </div>
+              <div className="text-xs text-muted-foreground">{t("unit.m3")}</div>
+            </div>
+            <div>
+              <div className="text-xs text-muted-foreground">{locale === "th" ? "มวลรวม" : "Total mass"}</div>
+              <div className="text-3xl font-bold tabular-nums">
+                {fmt(agg.estimatedSedimentT, { maximumFractionDigits: 0 })}
+              </div>
+              <div className="text-xs text-muted-foreground">{t("unit.t")}</div>
+            </div>
+            <div>
+              <div className="text-xs text-muted-foreground">{locale === "th" ? "คาร์บอนที่กักไว้" : "Carbon retained"}</div>
+              <div className="text-3xl font-bold tabular-nums text-emerald-600 dark:text-emerald-400">
+                {fmt(agg.estimatedCarbonT, { maximumFractionDigits: 1 })}
+              </div>
+              <div className="text-xs text-muted-foreground">t C</div>
+            </div>
+            <div>
+              <div className="text-xs text-muted-foreground">{locale === "th" ? "เทียบเท่า CO₂" : "CO₂ equivalent"}</div>
+              <div className="text-3xl font-bold tabular-nums text-violet-600 dark:text-violet-400">
+                {fmt(agg.estimatedCo2eT, { maximumFractionDigits: 0 })}
+              </div>
+              <div className="text-xs text-muted-foreground">{t("unit.tco2e")}</div>
+            </div>
+          </div>
+          <p className="mt-3 text-xs text-muted-foreground leading-relaxed">
+            {locale === "th"
+              ? "คำนวณจากอัตราการพังทลาย (USLE) × พื้นที่แปลง × ประสิทธิภาพการดักตะกอน × อายุโครงการ — รวมทุกชั้น terrace (7-10 ชั้น) บนพื้นที่สูง"
+              : "Computed via USLE erosion × farm area × trapping efficiency × project age — sums all terrace levels (7-10) on highland farms"}
+          </p>
+        </CardContent>
+      </Card>
+
+      {/* Per-farm breakdown */}
+      {farmTotals.length > 0 && (
         <Card>
           <CardHeader className="pb-2">
-            <CardTitle className="flex items-center gap-1.5 text-xs text-muted-foreground uppercase">
-              <Gauge className="h-3.5 w-3.5" /> {t("sediment.volume")}
+            <CardTitle className="flex items-center gap-2 text-base">
+              <Layers3 className="h-4 w-4 text-amber-600 dark:text-amber-400" />
+              {locale === "th" ? "สรุปต่อแปลง" : "Per-farm breakdown"}
             </CardTitle>
           </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-semibold tabular-nums">
-              {fmt(totals.volumeM3, { maximumFractionDigits: 1 })}
+          <CardContent className="p-0">
+            <div className="max-h-96 overflow-y-auto">
+              <Table>
+                <TableHeader className="sticky top-0 bg-card">
+                  <TableRow>
+                    <TableHead>{t("samples.farm")}</TableHead>
+                    <TableHead className="text-right">{t("farms.area")}</TableHead>
+                    <TableHead className="text-right">{locale === "th" ? "ความชัน" : "Slope"}</TableHead>
+                    <TableHead className="text-right">{locale === "th" ? "ชั้น" : "Levels"}</TableHead>
+                    <TableHead className="text-right">{locale === "th" ? "Traps" : "Traps"}</TableHead>
+                    <TableHead className="text-right">{locale === "th" ? "ตะกอน/ชั้น" : "Per layer"}</TableHead>
+                    <TableHead className="text-right">{locale === "th" ? "รวม (t)" : "Total (t)"}</TableHead>
+                    <TableHead className="text-right">CO₂e (t)</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {farmTotals.map((f) => (
+                    <TableRow key={f.farmId} className="hover:bg-muted/50">
+                      <TableCell className="text-sm max-w-[200px] truncate">
+                        {f.farmNameTh}
+                      </TableCell>
+                      <TableCell className="text-right text-sm tabular-nums">
+                        {fmt(f.areaHa, { maximumFractionDigits: 1 })}
+                      </TableCell>
+                      <TableCell className="text-right text-sm tabular-nums">
+                        {fmt(f.slopePct ?? 0)}%
+                      </TableCell>
+                      <TableCell className="text-right text-sm tabular-nums">
+                        <Badge variant="outline" className="text-[10px]">
+                          {f.estimated.numTerraceLevels}
+                        </Badge>
+                      </TableCell>
+                      <TableCell className="text-right text-sm tabular-nums">
+                        {f.trapCount}
+                      </TableCell>
+                      <TableCell className="text-right text-sm tabular-nums text-muted-foreground">
+                        {fmt(f.estimated.perLayerSedimentT, { maximumFractionDigits: 0 })}
+                      </TableCell>
+                      <TableCell className="text-right text-sm tabular-nums font-semibold text-emerald-600 dark:text-emerald-400">
+                        {fmt(f.estimated.totalSedimentT, { maximumFractionDigits: 0 })}
+                      </TableCell>
+                      <TableCell className="text-right text-sm tabular-nums text-violet-600 dark:text-violet-400">
+                        {fmt(f.estimated.totalCo2eT, { maximumFractionDigits: 0 })}
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
             </div>
-            <p className="text-xs text-muted-foreground">{t("unit.m3")}</p>
           </CardContent>
         </Card>
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="flex items-center gap-1.5 text-xs text-muted-foreground uppercase">
-              <Mountain className="h-3.5 w-3.5" /> {t("sediment.mass")}
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-semibold tabular-nums">
-              {fmt(totals.massT, { maximumFractionDigits: 1 })}
+      )}
+
+      {/* Sample captured in monitoring traps (small — for verification) */}
+      <Card className="border-dashed">
+        <CardHeader className="pb-2">
+          <CardTitle className="flex items-center gap-2 text-base">
+            <Gauge className="h-4 w-4 text-sky-600 dark:text-sky-400" />
+            {locale === "th" ? "ตัวอย่างที่จับในกับดักมอนิเตอร์ริ่ง" : "Sample captured in monitoring traps"}
+            <Badge variant="secondary" className="text-[10px]">
+              {totalTraps} {locale === "th" ? "กับดัก" : "traps"}
+            </Badge>
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
+            <div>
+              <div className="text-xs text-muted-foreground">{t("sediment.volume")}</div>
+              <div className="text-lg font-semibold tabular-nums">
+                {fmt(agg.sampleVolumeM3, { maximumFractionDigits: 2 })}
+              </div>
+              <div className="text-xs text-muted-foreground">{t("unit.m3")}</div>
             </div>
-            <p className="text-xs text-muted-foreground">{t("unit.t")}</p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="flex items-center gap-1.5 text-xs text-muted-foreground uppercase">
-              <Leaf className="h-3.5 w-3.5" /> {t("sediment.carbon")}
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-semibold tabular-nums text-emerald-600 dark:text-emerald-400">
-              {fmt(totals.carbonRetainedT, { maximumFractionDigits: 3 })}
+            <div>
+              <div className="text-xs text-muted-foreground">{t("sediment.mass")}</div>
+              <div className="text-lg font-semibold tabular-nums">
+                {fmt(agg.sampleMassT, { maximumFractionDigits: 2 })}
+              </div>
+              <div className="text-xs text-muted-foreground">{t("unit.t")}</div>
             </div>
-            <p className="text-xs text-muted-foreground">{t("unit.tco2e")}</p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="flex items-center gap-1.5 text-xs text-muted-foreground uppercase">
-              <Layers3 className="h-3.5 w-3.5" /> {t("sediment.co2e")}
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-semibold tabular-nums text-violet-600 dark:text-violet-400">
-              {fmt(totals.co2eRetained, { maximumFractionDigits: 1 })}
+            <div>
+              <div className="text-xs text-muted-foreground">{t("sediment.carbon")}</div>
+              <div className="text-lg font-semibold tabular-nums text-emerald-600 dark:text-emerald-400">
+                {fmt(totals.carbonRetainedT, { maximumFractionDigits: 3 })}
+              </div>
+              <div className="text-xs text-muted-foreground">t C</div>
             </div>
-            <p className="text-xs text-muted-foreground">{t("unit.tco2e")}</p>
-          </CardContent>
-        </Card>
-      </div>
+            <div>
+              <div className="text-xs text-muted-foreground">{t("sediment.co2e")}</div>
+              <div className="text-lg font-semibold tabular-nums text-violet-600 dark:text-violet-400">
+                {fmt(totals.co2eRetained, { maximumFractionDigits: 3 })}
+              </div>
+              <div className="text-xs text-muted-foreground">{t("unit.tco2e")}</div>
+            </div>
+          </div>
+          <p className="mt-2 text-xs text-muted-foreground">
+            {locale === "th"
+              ? "กับดักมอนิเตอร์ริ่ง (3-6 ม.² × 5-43 ซม. depth) จับตัวอย่างเพียงเล็กน้อยสำหรับตรวจสอบ — ปริมาณรวมจริงคือตัวเลขด้านบน"
+              : "Monitoring traps (3-6 m² × 5-43 cm depth) capture a small sample for verification — the real total is shown above"}
+          </p>
+        </CardContent>
+      </Card>
 
       {/* Table */}
       <Card>

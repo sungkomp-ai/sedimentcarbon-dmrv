@@ -3,6 +3,7 @@ import { db } from "@/lib/db";
 import { compareAllStandards, type CreditInput } from "@/lib/core/credits";
 import { totalSediment, type SedimentTrap } from "@/lib/core/sediment";
 import { mean } from "@/lib/core/soc";
+import { computeEstimatedSedimentTotal } from "@/lib/sediment-estimate";
 
 export async function GET() {
   const [farms, samples, sediment, activities, calculations] = await Promise.all([
@@ -30,6 +31,36 @@ export async function GET() {
     socPct: m.sedSocPct,
   }));
   const sedimentTotals = totalSediment(traps);
+
+  // Estimated total sediment retained across all farms (the BIG realistic number)
+  // Each farm's total = erosion × area × efficiency × project age (sums all 7-10 levels)
+  let estimatedTotalSedimentT = 0;
+  let estimatedTotalVolumeM3 = 0;
+  let estimatedTotalCarbonT = 0;
+  let estimatedTotalCo2eT = 0;
+  let totalTerraceLevels = 0;
+  for (const f of farms) {
+    const farmTraps = sediment
+      .filter((m) => m.farmId === f.id)
+      .map((m) => ({
+        areaM2: m.trapAreaM2,
+        deltaHCm: m.deltaHcm,
+        bulkDensity: m.sedBulkDensity,
+        socPct: m.sedSocPct,
+      }));
+    const est = computeEstimatedSedimentTotal({
+      areaHa: f.areaHa,
+      slopePct: f.slopePct,
+      trapTypes: f.trapTypes ? JSON.parse(f.trapTypes) : [],
+      projectStart: f.projectStart,
+      traps: farmTraps,
+    });
+    estimatedTotalSedimentT += est.totalSedimentT;
+    estimatedTotalVolumeM3 += est.totalVolumeM3;
+    estimatedTotalCarbonT += est.totalCarbonT;
+    estimatedTotalCo2eT += est.totalCo2eT;
+    totalTerraceLevels += est.numTerraceLevels;
+  }
 
   // Compute average SOC % per baseline vs current
   const baselineSoc = samples.filter((s) => s.isBaseline).map((s) => s.socPct);
@@ -78,6 +109,14 @@ export async function GET() {
     baselineCount: baselineSoc.length,
     currentCount: currentSoc.length,
     sedimentTotals,
+    // Estimated total sediment (BIG realistic number across all 7-10 levels per farm)
+    estimatedSediment: {
+      totalSedimentT: Math.round(estimatedTotalSedimentT * 10) / 10,
+      totalVolumeM3: Math.round(estimatedTotalVolumeM3 * 10) / 10,
+      totalCarbonT: Math.round(estimatedTotalCarbonT * 100) / 100,
+      totalCo2eT: Math.round(estimatedTotalCo2eT * 10) / 10,
+      totalTerraceLevels,
+    },
     recentActivity: activities.map((a) => ({
       id: a.id,
       farmId: a.farmId,
