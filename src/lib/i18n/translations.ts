@@ -8,7 +8,7 @@ export type Locale = "th" | "en";
 export const TRANSLATIONS: Record<Locale, Record<string, string>> = {
   th: {
     "app.title": "SedimentCarbon dMRV",
-    "app.subtitle": "ระบบ Digital MRV สำหรับเกษตรกรรักตะกอนดิน",
+    "app.subtitle": "ระบบ Digital MRV สำหรับเกษตรดักตะกอนดิน",
     "app.standards": "รองรับ T-VER / VCS / Gold Standard / ISO 14064",
 
     "nav.dashboard": "ภาพรวม",
@@ -21,7 +21,7 @@ export const TRANSLATIONS: Record<Locale, Record<string, string>> = {
     "nav.vvb": "ตรวจรับรอง VVB",
     "nav.guide": "แนวทางใช้งาน",
 
-    "dashboard.title": "ภาพรวมโครงการคาร์บอนเกษตรกรรักตะกอนดิน",
+    "dashboard.title": "ภาพรวมโครงการคาร์บอนเกษตรดักตะกอนดิน",
     "dashboard.totalFarms": "จำนวนแปลง",
     "dashboard.totalArea": "พื้นที่รวม",
     "dashboard.totalSamples": "ตัวอย่างดิน",
